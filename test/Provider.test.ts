@@ -24,8 +24,7 @@ describe('Get', () => {
     container.addSingleton(Dummy, { name: (provider) => provider.totalWhackYo });
     const sut = container.build();
 
-    // @ts-ignore
-    const alice = sut[Alice.name];
+    const alice = sut.get(Alice);
 
     expect(alice).toBe(expectedAlice);
   });
