@@ -31,10 +31,6 @@ jobs:
         with:
             node-version: 16.11.0 # optional
             token: ${{ github.token }}
-        
-      # Coverage test
-      - name: Coverage test
-      - run: jest --coverage
       
       # Publish package
       - name: build-test-merge-publish
