@@ -1,4 +1,4 @@
-# ts-dependency-injection
+# Sharp-Dependency-Injection
 
 Simple dependency injection
 
@@ -44,8 +44,8 @@ const container = new Container(Provider);
 // Only required field is the Dependency, i.e. Alice or Bob in this case
 // factory is an optional customization of the factory function, by default its (provider) => new Dependency(provider)
 // name is a linking tool between a class e.g. Bob and the provider field you want it called as, this is required if they are not the same (ignored casing)
-sut.addSingleton(Alice, {factory: provider => new Alice(), name: provider => provider.alice});
-sut.addSingleton(Bob);
+container.addSingleton(Alice, {factory: provider => new Alice(), name: provider => provider.alice});
+container.addSingleton(Bob);
 
 // The build process will auto-validate that all dependencies expected by Provider exists
 const provider = container.build();
