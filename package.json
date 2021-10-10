@@ -9,8 +9,8 @@
     "test": "test"
   },
   "scripts": {
-    "dev": "tsc && tsc -w",
     "build": "tsc",
+    "release": "tsc",
     "test": "jest"
   },
   "devDependencies": {
