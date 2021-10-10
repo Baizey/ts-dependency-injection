@@ -1,8 +1,11 @@
 {
   "name": "sharp-dependency-injection",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A simple typescript dependency injection",
-  "repository": "https://github.com/Baizey/node-pg-linq",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Baizey/ts-dependency-injection"
+  },
   "main": "src/index.ts",
   "files": [
     "lib/**/*"
