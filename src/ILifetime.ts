@@ -10,11 +10,11 @@ export interface ILifetime<T, E> {
 }
 
 export class Singleton<T, E> implements ILifetime<T, E> {
+  readonly className: string;
+  readonly providerName: string;
   private value?: T;
   private readonly factoryFunction: Factory<T, E>;
   private readonly container: Container<E>;
-  readonly className: string;
-  readonly providerName: string;
 
   constructor(container: Container<E>, className: string, providerName: string, factoryFunction: Factory<T, E>) {
     this.container = container;
@@ -29,10 +29,10 @@ export class Singleton<T, E> implements ILifetime<T, E> {
 }
 
 export class Transient<T, E> implements ILifetime<T, E> {
-  private readonly factory: Factory<T, E>;
-  private container: Container<E>;
   readonly className: string;
   readonly providerName: string;
+  private readonly factory: Factory<T, E>;
+  private container: Container<E>;
 
   constructor(container: Container<E>, className: string, providerName: string, factoryFunction: Factory<T, E>) {
     this.container = container;

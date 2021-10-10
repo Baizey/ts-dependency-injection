@@ -24,20 +24,6 @@ export class InternalProvider<E> {
     }
   }
 
-  private internalGet<T>(name: DependencyGetter<T, E>) {
-    try {
-      const result = this._container.get<T>(name);
-      if (result) return result.provide();
-    } catch (e) {
-      const error = e as Error;
-      if (error.message === 'Maximum call stack size exceeded')
-        throw new DependencyError({ type: DependencyErrorType.Circular, lifetime: name });
-      throw e;
-    }
-
-    throw new DependencyError({ type: DependencyErrorType.Existence, lifetime: name });
-  }
-
   validate(): void {
     const keys = Object.keys(this._container.template);
     const unresolved: DependencyError<any, any>[] = [];
@@ -53,5 +39,19 @@ export class InternalProvider<E> {
     if (unresolved.length === 0) return;
 
     throw new DependencyMultiError(DependencyMultiErrorType.Validation, unresolved);
+  }
+
+  private internalGet<T>(name: DependencyGetter<T, E>) {
+    try {
+      const result = this._container.get<T>(name);
+      if (result) return result.provide();
+    } catch (e) {
+      const error = e as Error;
+      if (error.message === 'Maximum call stack size exceeded')
+        throw new DependencyError({ type: DependencyErrorType.Circular, lifetime: name });
+      throw e;
+    }
+
+    throw new DependencyError({ type: DependencyErrorType.Existence, lifetime: name });
   }
 }

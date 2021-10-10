@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "A simple typescript dependency injection",
   "main": "src/index.ts",
-  "files": ["lib/**/*"],
+  "files": [
+    "lib/**/*"
+  ],
   "directories": {
     "lib": "lib",
     "test": "test"

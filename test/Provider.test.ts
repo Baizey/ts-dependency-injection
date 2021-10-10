@@ -1,6 +1,6 @@
 ﻿import 'jest';
 import { Container, DependencyError, DependencyErrorType } from '../src';
-import { Alice, Bob, Dummy, Provider, CircularA, CircularB, CircularProvider } from './models';
+import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from './models';
 import { DependencyMultiError, DependencyMultiErrorType } from '../src/DependencyError';
 
 describe('Get', () => {

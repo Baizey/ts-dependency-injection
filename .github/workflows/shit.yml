@@ -8,7 +8,7 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: []
+    branches: [ ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -29,9 +29,9 @@ jobs:
       - name: Setup Node.js environment
         uses: actions/setup-node@v2.4.1
         with:
-            node-version: 16.11.0 # optional
-            token: ${{ github.token }}
-              
+          node-version: 16.11.0 # optional
+          token: ${{ github.token }}
+
       - name: build-test-merge-publish
         uses: bbeesley/build-test-merge-publish@v1.1.0
         with:

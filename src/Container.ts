@@ -8,12 +8,12 @@ import {
 } from './DependencyError';
 import { Keys, nameSelector } from './NameSelector';
 
-type LifetimeProvider<T, E> = {
-  new (container: Container<E>, className: string, providerName: string, factoryFunction: Factory<T, E>): ILifetime<
-    T,
-    E
-  >;
-};
+type LifetimeProvider<T, E> = new (
+  container: Container<E>,
+  className: string,
+  providerName: string,
+  factoryFunction: Factory<T, E>,
+) => ILifetime<T, E>;
 
 type NameSelector<E> = (provider: Keys<E>) => string;
 
@@ -33,10 +33,10 @@ export type DependencyGetter<T, E> = DependencyProvider<T, E> | string;
 type ActualProvider<E> = E & InternalProvider<E>;
 
 export class Container<E> {
+  readonly template: E;
   private readonly dependencyLookup: Record<string, ILifetime<any, E>> = {};
   private readonly providerLookup: Record<string, ILifetime<any, E>> = {};
   private readonly intendedDependencies: Record<string, string>;
-  readonly template: E;
   private provider?: ActualProvider<E>;
 
   constructor(ProviderTemplate: ProviderProvider<E>) {
