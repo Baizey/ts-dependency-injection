@@ -38,3 +38,7 @@ jobs:
           build-command: npm run build
           release-command: npm run release
           main-branch: master
+          # Auth token to use with private npm registry
+          private-npm-token: ${NPM_TOKEN}
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
