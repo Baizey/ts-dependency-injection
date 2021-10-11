@@ -1,7 +1,9 @@
 ﻿import 'jest';
-import { Container, DependencyError, DependencyErrorType } from '../src';
+import { Container, DependencyError } from '../src';
 import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from './models';
-import { DependencyMultiError, DependencyMultiErrorType } from '../src/DependencyError';
+import { DependencyMultiError } from '../src/DependencyError';
+import { properties } from '../src/utils';
+import { DependencyErrorType, DependencyMultiErrorType } from '../src/types';
 
 describe('Get', () => {
   test('Succeed, via get property', () => {
@@ -9,7 +11,7 @@ describe('Get', () => {
     const expectedAlice = new Alice();
     container.addSingleton(Alice, { factory: () => expectedAlice });
     container.addSingleton(Bob);
-    container.addSingleton(Dummy, { name: (provider) => provider.totalWhackYo });
+    container.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
     const sut = container.build();
 
     const alice = sut.alicE;
@@ -21,10 +23,10 @@ describe('Get', () => {
     const expectedAlice = new Alice();
     container.addSingleton(Alice, { factory: () => expectedAlice });
     container.addSingleton(Bob);
-    container.addSingleton(Dummy, { name: (provider) => provider.totalWhackYo });
+    container.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
     const sut = container.build();
 
-    const alice = sut.get(Alice);
+    const alice = sut.get((provider) => provider.alicE);
 
     expect(alice).toBe(expectedAlice);
   });
@@ -36,7 +38,7 @@ describe('Get', () => {
     expect(() => sut.CircularA).toThrowError(
       new DependencyError({
         type: DependencyErrorType.Circular,
-        lifetime: CircularA,
+        lifetime: properties(new CircularProvider()).CircularA,
       }),
     );
   });
@@ -47,7 +49,7 @@ describe('Validate', () => {
     const container = new Container(Provider);
     container.addSingleton(Alice);
     container.addSingleton(Bob);
-    container.addSingleton(Dummy, { name: (provider) => provider.totalWhackYo });
+    container.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
     const sut = container.build();
 
     sut.validate();
@@ -62,8 +64,14 @@ describe('Validate', () => {
 
     expect(() => sut.validate()).toThrowError(
       new DependencyMultiError(DependencyMultiErrorType.Validation, [
-        new DependencyError({ type: DependencyErrorType.Circular, lifetime: CircularA }),
-        new DependencyError({ type: DependencyErrorType.Circular, lifetime: CircularB }),
+        new DependencyError({
+          type: DependencyErrorType.Circular,
+          lifetime: properties(new CircularProvider()).CircularB,
+        }),
+        new DependencyError({
+          type: DependencyErrorType.Circular,
+          lifetime: properties(new CircularProvider()).CircularA,
+        }),
       ]),
     );
   });

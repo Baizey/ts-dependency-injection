@@ -1,47 +1,36 @@
 import { InternalProvider } from './InternalProvider';
 import { Factory, ILifetime, Singleton, Transient } from './ILifetime';
-import {
-  DependencyError,
-  DependencyErrorType,
-  DependencyMultiError,
-  DependencyMultiErrorType,
-} from './DependencyError';
-import { Keys, nameSelector } from './NameSelector';
+import { DependencyError, DependencyMultiError } from './DependencyError';
+import { properties } from './utils';
+import { DependencyErrorType, DependencyMultiErrorType, DependencyProvider, NameSelector } from './types';
 
 type LifetimeProvider<T, E> = new (
   container: Container<E>,
-  className: string,
+  dependency: DependencyProvider<T, E>,
   providerName: string,
   factoryFunction: Factory<T, E>,
 ) => ILifetime<T, E>;
 
-type NameSelector<E> = (provider: Keys<E>) => string;
-
 type ProviderProvider<E> = { prototype: E; name: string; new (): E };
-
-type DependencyProvider<T, E> =
-  | { prototype: T; name: string; new (provider: E): T }
-  | { prototype: T; name: string; new (): T };
 
 type DependencyOptions<T, E> = {
   factory?: Factory<T, E>;
-  name?: NameSelector<E>;
+  selector?: NameSelector<T, E>;
 };
 
-export type DependencyGetter<T, E> = DependencyProvider<T, E> | string;
+type DependencyGetter<T, E> = string;
 
 type ActualProvider<E> = E & InternalProvider<E>;
 
 export class Container<E> {
   readonly template: E;
-  private readonly dependencyLookup: Record<string, ILifetime<any, E>> = {};
   private readonly providerLookup: Record<string, ILifetime<any, E>> = {};
-  private readonly intendedDependencies: Record<string, string>;
+  private readonly dependencyToProvider: Record<string, string>;
   private provider?: ActualProvider<E>;
 
   constructor(ProviderTemplate: ProviderProvider<E>) {
     this.template = new ProviderTemplate();
-    this.intendedDependencies = Object.keys(this.template).reduce((a, b) => {
+    this.dependencyToProvider = Object.keys(this.template).reduce((a, b) => {
       a[b.toLowerCase()] = b;
       return a;
     }, {} as Record<string, string>);
@@ -69,9 +58,9 @@ export class Container<E> {
     options: DependencyOptions<T, E> = {},
   ) {
     if (!this.tryAdd(Lifetime, Dependency, options)) {
-      const providerName = options.name
-        ? options.name(nameSelector(this.template))
-        : this.intendedDependencies[Dependency.name.toLowerCase()];
+      const providerName = options.selector
+        ? options.selector(properties(this.template))
+        : this.dependencyToProvider[Dependency.name.toLowerCase()];
 
       throw new DependencyError({
         type: DependencyErrorType.Duplicate,
@@ -83,18 +72,16 @@ export class Container<E> {
   tryAdd<T>(
     Lifetime: LifetimeProvider<T, E>,
     Dependency: DependencyProvider<T, E>,
-    { factory = (provider: E) => new Dependency(provider), name }: DependencyOptions<T, E> = {},
+    { factory = (provider: E) => new Dependency(provider), selector }: DependencyOptions<T, E> = {},
   ): boolean {
-    const providerName = name
-      ? name(nameSelector(this.template))
-      : this.intendedDependencies[Dependency.name.toLowerCase()];
+    const providerName = selector
+      ? selector(properties(this.template))
+      : this.dependencyToProvider[Dependency.name.toLowerCase()];
 
-    if (!providerName) throw new DependencyError({ type: DependencyErrorType.Unknown, lifetime: Dependency });
+    if (!providerName) throw new DependencyError({ type: DependencyErrorType.Unknown, lifetime: Dependency.name });
     if (this.providerLookup[providerName]) return false;
-    if (this.dependencyLookup[Dependency.name]) return false;
 
-    this.dependencyLookup[Dependency.name] = new Lifetime(this, Dependency.name, providerName, factory);
-    this.providerLookup[providerName] = new Lifetime(this, Dependency.name, providerName, factory);
+    this.providerLookup[providerName] = new Lifetime(this, Dependency, providerName, factory);
     return true;
   }
 
@@ -102,8 +89,7 @@ export class Container<E> {
    * Calling this there is no guarantee that it can provide an instance
    */
   get<T>(item: DependencyGetter<T, E>) {
-    if (typeof item === 'string') return this.providerLookup[item] as ILifetime<T, E> | undefined;
-    else return this.dependencyLookup[item.name] as ILifetime<T, E> | undefined;
+    return this.providerLookup[item] as ILifetime<T, E> | undefined;
   }
 
   preBuildValidate() {
@@ -123,12 +109,7 @@ export class Container<E> {
     this.preBuildValidate();
 
     Object.keys(this.template).forEach((providerName) => {
-      const className = this.providerLookup[providerName]?.className;
-
-      Object.defineProperty(provider, providerName, { get: () => provider.get(providerName) });
-
-      if (className !== providerName)
-        Object.defineProperty(provider, className, { get: () => provider.get(providerName) });
+      Object.defineProperty(provider, providerName, { get: () => provider.get(() => providerName) });
     });
 
     return (this.provider = provider);

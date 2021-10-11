@@ -6,6 +6,7 @@ export class Provider {
 
 export class Alice {
   private static nextId: number = 0;
+  readonly aliceParameter: null = null;
   readonly id: number;
 
   constructor() {
@@ -15,6 +16,7 @@ export class Alice {
 
 export class Bob {
   private static nextId: number = 0;
+  readonly bobParameter: null = null;
   readonly id: number;
   readonly a: Alice;
 
@@ -25,4 +27,5 @@ export class Bob {
 }
 
 export class Dummy {
+  readonly dummyParameter: null = null;
 }
