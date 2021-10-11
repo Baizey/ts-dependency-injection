@@ -39,6 +39,12 @@ jobs:
       - run: npm run test
       
       # Build
+      - name: Automated Version Bump
+        uses: phips28/gh-action-bump-version@v9.0.1
+        with:
+          target-branch: master-release
+          commit-message: auto version bump
+          
       - run: npm run build
       
       # Publish
