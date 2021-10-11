@@ -36,10 +36,10 @@ jobs:
       - run: npm install
       
       # Test
-      - run: npm test
+      - run: npm run test
       
       # Build
-      - run: npm build
+      - run: npm run build
       
       # Publish
       - uses: JS-DevTools/npm-publish@v1
