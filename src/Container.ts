@@ -27,6 +27,20 @@ type DependencyOptions<T, E> = {
 type DependencyGetter<T, E> = string;
 
 export class Container<E> {
+  private static provider?: ActualProvider<any>;
+
+  public static getOrCreate<T>(factory?: () => Container<T>): ActualProvider<T> {
+    if (this.provider) return this.provider;
+    if (!factory) throw new Error('Factory not provided and no global provider exists');
+    return (this.provider = factory().build());
+  }
+
+  public static async getOrCreateAsync<T>(factory?: () => Promise<Container<T>>): Promise<ActualProvider<T>> {
+    if (this.provider) return this.provider;
+    if (!factory) throw new Error('Factory not provided and no global provider exists');
+    return (this.provider = (await factory()).build());
+  }
+
   readonly template: E;
   private readonly providerLookup: Record<string, ILifetime<any, E>> = {};
   private readonly dependencyToProvider: Record<string, string>;
