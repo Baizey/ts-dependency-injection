@@ -25,20 +25,23 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       
-      # Setup environment
+      # Setup
       - name: Setup Node.js environment
         uses: actions/setup-node@v2.4.1
         with:
           node-version: 16.11.0 # optional
           token: ${{ github.token }}
-
-      - name: build-test-merge-publish
-        uses: bbeesley/build-test-merge-publish@v1.1.0
+          
+      # Install
+      - run: npm install
+      
+      # Test
+      - run: npm test
+      
+      # Build
+      - run: npm build
+      
+      # Publish
+      - uses: JS-DevTools/npm-publish@v1
         with:
-          build-command: npm run build
-          release-command: npm run release
-          main-branch: master
-          # Auth token to use with private npm registry
-          private-npm-token: ${NPM_TOKEN}
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          token: ${{ secrets.NPM_TOKEN }}
