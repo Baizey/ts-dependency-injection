@@ -1,6 +1,6 @@
 {
   "name": "sharp-dependency-injection",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A simple typescript dependency injection",
   "repository": {
     "type": "git",
@@ -17,7 +17,8 @@
   "scripts": {
     "build": "tsc",
     "release": "npm publish",
-    "test": "jest"
+    "test": "jest",
+    "test:cov": "jest --coverage"
   },
   "devDependencies": {
     "typescript": "^4.4.3",
