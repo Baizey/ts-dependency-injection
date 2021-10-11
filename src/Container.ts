@@ -2,10 +2,16 @@ import { InternalProvider } from './InternalProvider';
 import { Factory, ILifetime, Singleton, Transient } from './ILifetime';
 import { DependencyError, DependencyMultiError } from './DependencyError';
 import { properties } from './utils';
-import { DependencyErrorType, DependencyMultiErrorType, DependencyProvider, NameSelector } from './types';
+import {
+  ActualProvider,
+  DependencyErrorType,
+  DependencyMultiErrorType,
+  DependencyProvider,
+  NameSelector,
+} from './types';
 
 type LifetimeProvider<T, E> = new (
-  container: Container<E>,
+  futureProvider: () => ActualProvider<E>,
   dependency: DependencyProvider<T, E>,
   providerName: string,
   factoryFunction: Factory<T, E>,
@@ -19,8 +25,6 @@ type DependencyOptions<T, E> = {
 };
 
 type DependencyGetter<T, E> = string;
-
-type ActualProvider<E> = E & InternalProvider<E>;
 
 export class Container<E> {
   readonly template: E;
@@ -81,7 +85,7 @@ export class Container<E> {
     if (!providerName) throw new DependencyError({ type: DependencyErrorType.Unknown, lifetime: Dependency.name });
     if (this.providerLookup[providerName]) return false;
 
-    this.providerLookup[providerName] = new Lifetime(this, Dependency, providerName, factory);
+    this.providerLookup[providerName] = new Lifetime(() => this.build(), Dependency, providerName, factory);
     return true;
   }
 
@@ -109,7 +113,7 @@ export class Container<E> {
     this.preBuildValidate();
 
     Object.keys(this.template).forEach((providerName) => {
-      Object.defineProperty(provider, providerName, { get: () => provider.get(() => providerName) });
+      Object.defineProperty(provider, providerName, { get: () => provider.get(providerName) });
     });
 
     return (this.provider = provider);

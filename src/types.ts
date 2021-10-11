@@ -1,4 +1,7 @@
 import { Keys } from './utils';
+import { InternalProvider } from './InternalProvider';
+
+export type ActualProvider<E> = E & InternalProvider<E>;
 
 export type DependencyProvider<T, E> =
   | { prototype: T; name: string; new (provider: E): T }

@@ -10,30 +10,16 @@ export class InternalProvider<E> {
     this._container = container;
   }
 
-  get<T>(nameSelector: NameSelector<T, E>) {
-    const name = nameSelector(properties(this._container.template));
+  get<T>(nameSelector: NameSelector<T, E> | string) {
+    const name = typeof nameSelector === 'string' ? nameSelector : nameSelector(properties(this._container.template));
     try {
-      return this.getByString(name);
+      return this._container.get(name)?.provide();
     } catch (e) {
       const error = e as DependencyError<any, any>;
-      if (error.type === DependencyErrorType.Circular)
-        throw new DependencyError({ type: DependencyErrorType.Circular, lifetime: name });
-      throw e;
-    }
-  }
-
-  protected getByString<T>(name: string) {
-    try {
-      const result = this._container.get<T>(name);
-      if (result) return result.provide();
-    } catch (e) {
-      const error = e as Error;
       if (error.message === 'Maximum call stack size exceeded')
         throw new DependencyError({ type: DependencyErrorType.Circular, lifetime: name });
       throw e;
     }
-
-    throw new DependencyError({ type: DependencyErrorType.Existence, lifetime: name });
   }
 
   validate(): void {
@@ -42,7 +28,7 @@ export class InternalProvider<E> {
 
     for (let key of keys) {
       try {
-        this.getByString(key);
+        this.get(key);
       } catch (e: unknown) {
         unresolved.push(e as DependencyError<any, any>);
       }

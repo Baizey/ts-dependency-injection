@@ -1,7 +1,7 @@
 ﻿import 'jest';
 import { Container, DependencyError } from '../src';
 import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from './models';
-import { DependencyMultiError } from '../src/DependencyError';
+import { DependencyMultiError } from '../src';
 import { properties } from '../src/utils';
 import { DependencyErrorType, DependencyMultiErrorType } from '../src/types';
 
@@ -38,7 +38,7 @@ describe('Get', () => {
     expect(() => sut.CircularA).toThrowError(
       new DependencyError({
         type: DependencyErrorType.Circular,
-        lifetime: properties(new CircularProvider()).CircularA,
+        lifetime: properties(new CircularProvider()).CircularB,
       }),
     );
   });
