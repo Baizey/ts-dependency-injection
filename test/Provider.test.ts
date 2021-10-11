@@ -38,7 +38,7 @@ describe('Get', () => {
     expect(() => sut.CircularA).toThrowError(
       new DependencyError({
         type: DependencyErrorType.Circular,
-        lifetime: properties(new CircularProvider()).CircularB,
+        lifetime: properties(new CircularProvider()).CircularA,
       }),
     );
   });
@@ -66,11 +66,11 @@ describe('Validate', () => {
       new DependencyMultiError(DependencyMultiErrorType.Validation, [
         new DependencyError({
           type: DependencyErrorType.Circular,
-          lifetime: properties(new CircularProvider()).CircularB,
+          lifetime: properties(new CircularProvider()).CircularA,
         }),
         new DependencyError({
           type: DependencyErrorType.Circular,
-          lifetime: properties(new CircularProvider()).CircularA,
+          lifetime: properties(new CircularProvider()).CircularB,
         }),
       ]),
     );

@@ -7,7 +7,7 @@ export type DependencyProvider<T, E> =
   | { prototype: T; name: string; new (provider: E): T }
   | { prototype: T; name: string; new (): T };
 
-export type NameSelector<T, E> = (provider: Keys<T, E>) => string;
+export type NameSelector<T, E> = string | ((provider: Keys<T, E>) => string);
 
 export enum DependencyErrorType {
   Existence = `'{name}' has not been added to dependency container, but it was supposed to, wasn't it?`,

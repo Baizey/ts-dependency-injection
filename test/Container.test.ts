@@ -78,7 +78,6 @@ describe('Add', () => {
       );
     });
   });
-
   describe('Singleton', () => {
     test('No options', () => {
       const sut = new Container(Provider);
@@ -139,7 +138,6 @@ describe('Add', () => {
       );
     });
   });
-
   describe('Transient', () => {
     test('No options', () => {
       const sut = new Container(Provider);
@@ -249,99 +247,25 @@ describe('TryAdd', () => {
       }),
     );
   });
+});
 
-  test('Singleton', () => {
+describe('Remove', () => {
+  test('Thing exists', () => {
     const sut = new Container(Provider);
-    sut.addSingleton(Bob);
-    sut.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
+    sut.add(Singleton, Alice);
 
-    sut.tryAddSingleton(Alice);
-    const actual = sut.get(properties(new Provider()).alicE);
-    actual?.provide();
+    const actual = sut.remove<Alice>((provider) => provider.alicE);
 
-    expect(actual).toBeInstanceOf(Singleton);
-    expect(actual).not.toBeUndefined();
+    expect(actual).toBe(true);
+    expect(sut.get((provider) => provider.alicE)).toBeUndefined();
   });
-  test('Singleton with factory', () => {
+  test('Thing doesnt exists', () => {
     const sut = new Container(Provider);
-    const expected = new Alice();
-    const factory = () => expected;
-    sut.addSingleton(Bob);
-    sut.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
 
-    sut.tryAddSingleton(Alice, { factory });
-    const actual = sut.get(properties(new Provider()).alicE);
+    const actual = sut.remove<Alice>((provider) => provider.alicE);
 
-    expect(actual).toBeInstanceOf(Singleton);
-    expect(actual?.provide()).toBe(expected);
-  });
-  test('Singleton duplicate', () => {
-    const sut = new Container(Provider);
-    const expected = new Alice();
-    sut.addSingleton(Bob);
-    sut.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
-
-    sut.tryAddSingleton(Alice, { factory: () => expected });
-    sut.tryAddSingleton(Alice);
-    const actual = sut.build().alicE;
-
-    expect(actual).toBe(expected);
-  });
-  test('Singleton, error unknown', () => {
-    const sut = new Container(Provider);
-    expect(() => sut.tryAddSingleton(Unknown)).toThrowError(
-      new DependencyError({
-        type: DependencyErrorType.Unknown,
-        lifetime: Unknown.name,
-      }),
-    );
-  });
-
-  test('Transient', () => {
-    const sut = new Container(Provider);
-    sut.addSingleton(Bob);
-    sut.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
-
-    sut.tryAddTransient(Alice);
-    const actual = sut.get(properties(new Provider()).alicE);
-    actual?.provide();
-
-    expect(actual).toBeInstanceOf(Transient);
-    expect(actual).not.toBeUndefined();
-  });
-  test('Transient with factory', () => {
-    const sut = new Container(Provider);
-    const expected = new Alice();
-    const factory = () => expected;
-    sut.addSingleton(Bob);
-    sut.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
-
-    sut.tryAddTransient(Alice, { factory });
-    const actual = sut.get(properties(new Provider()).alicE);
-
-    expect(actual).toBeInstanceOf(Transient);
-    expect(actual?.provide()).toBe(expected);
-  });
-  test('Transient duplicate', () => {
-    const sut = new Container(Provider);
-    const expected = new Alice();
-    sut.addSingleton(Bob);
-    sut.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
-    sut.tryAddTransient(Alice, { factory: () => expected });
-
-    sut.tryAddTransient(Alice);
-    const actual = sut.build().alicE;
-
-    expect(actual).toBe(expected);
-  });
-  test('Transient, error unknown', () => {
-    const sut = new Container(Provider);
-    expect(() => sut.tryAddTransient(Unknown)).toThrowError(
-      new DependencyError({
-        type: DependencyErrorType.Unknown,
-        lifetime: Unknown.name,
-      }),
-    );
+    expect(actual).toBe(false);
+    expect(sut.get((provider) => provider.alicE)).toBeUndefined();
   });
 });
 

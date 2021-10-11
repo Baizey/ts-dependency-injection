@@ -24,8 +24,6 @@ type DependencyOptions<T, E> = {
   selector?: NameSelector<T, E>;
 };
 
-type DependencyGetter<T, E> = string;
-
 export class Container<E> {
   private static provider?: ActualProvider<any>;
 
@@ -58,16 +56,8 @@ export class Container<E> {
     this.add(Singleton, Dependency, options);
   }
 
-  tryAddSingleton<T>(Dependency: DependencyProvider<T, E>, options: DependencyOptions<T, E> = {}) {
-    this.tryAdd(Singleton, Dependency, options);
-  }
-
   addTransient<T>(Dependency: DependencyProvider<T, E>, options: DependencyOptions<T, E> = {}) {
     this.add(Transient, Dependency, options);
-  }
-
-  tryAddTransient<T>(Dependency: DependencyProvider<T, E>, options: DependencyOptions<T, E> = {}) {
-    this.tryAdd(Transient, Dependency, options);
   }
 
   add<T>(
@@ -76,13 +66,9 @@ export class Container<E> {
     options: DependencyOptions<T, E> = {},
   ) {
     if (!this.tryAdd(Lifetime, Dependency, options)) {
-      const providerName = options.selector
-        ? options.selector(properties(this.template))
-        : this.dependencyToProvider[Dependency.name.toLowerCase()];
-
       throw new DependencyError({
         type: DependencyErrorType.Duplicate,
-        lifetime: providerName,
+        lifetime: this.resolveProperty(options.selector, Dependency),
       });
     }
   }
@@ -92,9 +78,7 @@ export class Container<E> {
     Dependency: DependencyProvider<T, E>,
     { factory = (provider: E) => new Dependency(provider), selector }: DependencyOptions<T, E> = {},
   ): boolean {
-    const providerName = selector
-      ? selector(properties(this.template))
-      : this.dependencyToProvider[Dependency.name.toLowerCase()];
+    const providerName = this.resolveProperty(selector, Dependency);
 
     if (!providerName) throw new DependencyError({ type: DependencyErrorType.Unknown, lifetime: Dependency.name });
     if (this.providerLookup[providerName]) return false;
@@ -103,11 +87,19 @@ export class Container<E> {
     return true;
   }
 
-  /**
-   * Calling this there is no guarantee that it can provide an instance
-   */
-  get<T>(item: DependencyGetter<T, E>) {
-    return this.providerLookup[item] as ILifetime<T, E> | undefined;
+  get<T>(item: NameSelector<T, E>) {
+    const name = this.resolveProperty(item);
+
+    return this.providerLookup[name] as ILifetime<T, E> | undefined;
+  }
+
+  remove<T>(item: NameSelector<T, E>): boolean {
+    const name = this.resolveProperty(item);
+
+    if (!this.providerLookup[name]) return false;
+
+    delete this.providerLookup[name];
+    return true;
   }
 
   preBuildValidate() {
@@ -131,5 +123,11 @@ export class Container<E> {
     });
 
     return (this.provider = provider);
+  }
+
+  resolveProperty<T>(item?: NameSelector<T, E>, Dependency?: DependencyProvider<T, E>): string {
+    if (item) return typeof item === 'string' ? item : item(properties(this.template));
+    if (Dependency) return this.dependencyToProvider[Dependency.name.toLowerCase()];
+    return undefined as unknown as string;
   }
 }
