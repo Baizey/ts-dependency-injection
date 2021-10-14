@@ -40,8 +40,8 @@ Adding dependencies is done in a way that should be familiar to anyone who has u
 ```
 const container = new Container(Provider);
 container.add(Transient, Alice);
-container.add(Scoped, Bob, {factory: provider => new Bob(provider)});
-container.add<IConfiguration>(Singleton, Configuration, {selector: provider => provider.config})
+container.add(Scoped, {selector: p => p.bob, factory: provider => new Bob(provider)});
+container.add<IConfiguration>(Singleton, {dependency: Configuration, selector: provider => provider.config})
 ```
 Note here that the default factory is always: `(provider) => new Dependency(provider)`
 
