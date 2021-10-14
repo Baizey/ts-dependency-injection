@@ -1,40 +1,67 @@
 ﻿import { Container } from './Container';
-import { DependencyError, DependencyMultiError } from './DependencyError';
-import { DependencyErrorType, DependencyMultiErrorType, NameSelector } from './types';
+import { ActualProvider, NameSelector, ProviderContext, ProviderCreator, ProviderValidation } from './types';
+import { CircularDependencyError, DependencyErrorType, ErrorTypes, MultiDependencyError } from './Errors';
 
 export class InternalProvider<E> {
-  private readonly container: Container<E>;
+  readonly _: {
+    container: Container<E>;
+    create: ProviderCreator<E>;
+    validation: ProviderValidation<E>;
+    context: ProviderContext<E>;
+  };
 
-  constructor(container: Container<E>) {
-    this.container = container;
+  constructor(
+    container: Container<E>,
+    create: ProviderCreator<E>,
+    validation: ProviderValidation<E>,
+    context: ProviderContext<E>,
+  ) {
+    this._ = {
+      context,
+      validation,
+      container,
+      create,
+    };
   }
 
   get<T>(nameSelector: NameSelector<T, E>) {
-    const name = this.container.resolveProperty(nameSelector);
+    const { container, context, create, validation } = this._;
+    const name = container.resolveProperty(nameSelector);
+
     try {
-      return this.container.get(name)?.provide();
+      const actual = context ? (this as unknown as ActualProvider<E>) : create(validation, {});
+      return container.get(name)?.provide(actual);
     } catch (e) {
-      const error = e as DependencyError<any, any>;
-      if (error.message === 'Maximum call stack size exceeded' || error.type === DependencyErrorType.Circular)
-        throw new DependencyError({ type: DependencyErrorType.Circular, lifetime: name });
-      throw e;
+      const error = e as ErrorTypes;
+      switch (error.type) {
+        case DependencyErrorType.Circular:
+          // When error is detected we can only say lifetime === cause
+          // Letting it throw 1 dependency up we can find the dependencies causing the issue
+          if (error.lifetime !== error.cause) throw e;
+          throw new CircularDependencyError(error.lifetime, name);
+        default:
+          throw e;
+      }
     }
   }
 
   validate(): void {
-    const keys = Object.keys(this.container.template);
-    const unresolved: DependencyError<any, any>[] = [];
+    const {
+      container: { template },
+    } = this._;
+    const keys = Object.keys(template);
+    const unresolved: Error[] = [];
 
     for (let key of keys) {
       try {
         this.get(key);
       } catch (e: unknown) {
-        unresolved.push(e as DependencyError<any, any>);
+        unresolved.push(e as Error);
       }
     }
 
     if (unresolved.length === 0) return;
 
-    throw new DependencyMultiError(DependencyMultiErrorType.Validation, unresolved);
+    throw new MultiDependencyError(unresolved);
   }
 }

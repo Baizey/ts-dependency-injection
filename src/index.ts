@@ -1,3 +1,3 @@
-﻿export { Singleton, Transient } from './ILifetime';
-export { Container } from './Container';
-export { DependencyError, DependencyMultiError } from './DependencyError';
+﻿export { Container } from './Container';
+export { Transient, Singleton, Scoped } from './Lifetime';
+export { DependencyErrorType, ErrorTypes } from './Errors';

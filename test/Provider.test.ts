@@ -1,17 +1,15 @@
 ﻿import 'jest';
-import { Container, DependencyError } from '../src';
+import { Container, Singleton } from '../src';
 import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from './models';
-import { DependencyMultiError } from '../src';
-import { properties } from '../src/utils';
-import { DependencyErrorType, DependencyMultiErrorType } from '../src/types';
+import { CircularDependencyError, MultiDependencyError } from '../src/Errors';
 
 describe('Get', () => {
   test('Succeed, via get property', () => {
     const container = new Container(Provider);
     const expectedAlice = new Alice();
-    container.addSingleton(Alice, { factory: () => expectedAlice });
-    container.addSingleton(Bob);
-    container.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Singleton, Alice, { factory: () => expectedAlice });
+    container.add(Singleton, Bob);
+    container.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
     const sut = container.build();
 
     const alice = sut.alicE;
@@ -21,9 +19,9 @@ describe('Get', () => {
   test('Succeed, via classname', () => {
     const container = new Container(Provider);
     const expectedAlice = new Alice();
-    container.addSingleton(Alice, { factory: () => expectedAlice });
-    container.addSingleton(Bob);
-    container.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Singleton, Alice, { factory: () => expectedAlice });
+    container.add(Singleton, Bob);
+    container.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
     const sut = container.build();
 
     const alice = sut.get((provider) => provider.alicE);
@@ -32,24 +30,19 @@ describe('Get', () => {
   });
   test('Error, circular dependency', () => {
     const container = new Container(CircularProvider);
-    container.addSingleton(CircularA);
-    container.addSingleton(CircularB);
-    const sut = container.build();
-    expect(() => sut.CircularA).toThrowError(
-      new DependencyError({
-        type: DependencyErrorType.Circular,
-        lifetime: properties(new CircularProvider()).CircularA,
-      }),
-    );
+    container.add(Singleton, CircularA);
+    container.add(Singleton, CircularB);
+    const sut = container.build(true);
+    expect(() => sut.CircularA).toThrowError(new CircularDependencyError('CircularA', 'CircularB'));
   });
 });
 
 describe('Validate', () => {
   test('Succeed', () => {
     const container = new Container(Provider);
-    container.addSingleton(Alice);
-    container.addSingleton(Bob);
-    container.addSingleton(Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Singleton, Alice);
+    container.add(Singleton, Bob);
+    container.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
     const sut = container.build();
 
     sut.validate();
@@ -58,20 +51,14 @@ describe('Validate', () => {
   });
   test('Error, circular dependency', () => {
     const container = new Container(CircularProvider);
-    container.addSingleton(CircularA);
-    container.addSingleton(CircularB);
-    const sut = container.build();
+    container.add(Singleton, CircularA);
+    container.add(Singleton, CircularB);
+    const sut = container.build(true);
 
     expect(() => sut.validate()).toThrowError(
-      new DependencyMultiError(DependencyMultiErrorType.Validation, [
-        new DependencyError({
-          type: DependencyErrorType.Circular,
-          lifetime: properties(new CircularProvider()).CircularA,
-        }),
-        new DependencyError({
-          type: DependencyErrorType.Circular,
-          lifetime: properties(new CircularProvider()).CircularB,
-        }),
+      new MultiDependencyError([
+        new CircularDependencyError('CircularA', 'CircularB'),
+        new CircularDependencyError('CircularB', 'CircularA'),
       ]),
     );
   });

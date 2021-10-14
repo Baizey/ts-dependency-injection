@@ -1,17 +1,22 @@
 import { InternalProvider } from './InternalProvider';
-import { Factory, ILifetime, Singleton, Transient } from './ILifetime';
-import { DependencyError, DependencyMultiError } from './DependencyError';
 import { properties } from './utils';
 import {
   ActualProvider,
-  DependencyErrorType,
-  DependencyMultiErrorType,
   DependencyProvider,
+  Factory,
   NameSelector,
+  ProviderContext,
+  ProviderValidation,
 } from './types';
+import { ILifetime } from './Lifetime';
+import {
+  DuplicateDependencyError,
+  ExistenceDependencyError,
+  MultiDependencyError,
+  UnknownDependencyError,
+} from './Errors';
 
 type LifetimeProvider<T, E> = new (
-  futureProvider: () => ActualProvider<E>,
   dependency: DependencyProvider<T, E>,
   providerName: string,
   factoryFunction: Factory<T, E>,
@@ -40,9 +45,8 @@ export class Container<E> {
   }
 
   readonly template: E;
-  private readonly providerLookup: Record<string, ILifetime<any, E>> = {};
+  private readonly lifetimes: Record<string, ILifetime<any, E>> = {};
   private readonly dependencyToProvider: Record<string, string>;
-  private provider?: ActualProvider<E>;
 
   constructor(ProviderTemplate: ProviderProvider<E>) {
     this.template = new ProviderTemplate();
@@ -52,25 +56,13 @@ export class Container<E> {
     }, {} as Record<string, string>);
   }
 
-  addSingleton<T>(Dependency: DependencyProvider<T, E>, options: DependencyOptions<T, E> = {}) {
-    this.add(Singleton, Dependency, options);
-  }
-
-  addTransient<T>(Dependency: DependencyProvider<T, E>, options: DependencyOptions<T, E> = {}) {
-    this.add(Transient, Dependency, options);
-  }
-
   add<T>(
     Lifetime: LifetimeProvider<T, E>,
     Dependency: DependencyProvider<T, E>,
     options: DependencyOptions<T, E> = {},
-  ) {
-    if (!this.tryAdd(Lifetime, Dependency, options)) {
-      throw new DependencyError({
-        type: DependencyErrorType.Duplicate,
-        lifetime: this.resolveProperty(options.selector, Dependency),
-      });
-    }
+  ): void {
+    if (!this.tryAdd(Lifetime, Dependency, options))
+      throw new DuplicateDependencyError(this.resolveProperty(options.selector, Dependency));
   }
 
   tryAdd<T>(
@@ -80,54 +72,55 @@ export class Container<E> {
   ): boolean {
     const providerName = this.resolveProperty(selector, Dependency);
 
-    if (!providerName) throw new DependencyError({ type: DependencyErrorType.Unknown, lifetime: Dependency.name });
-    if (this.providerLookup[providerName]) return false;
+    if (!providerName) throw new UnknownDependencyError(Dependency.name);
+    if (this.lifetimes[providerName]) return false;
 
-    this.providerLookup[providerName] = new Lifetime(() => this.build(), Dependency, providerName, factory);
+    this.lifetimes[providerName] = new Lifetime(Dependency, providerName, factory);
     return true;
   }
 
-  get<T>(item: NameSelector<T, E>) {
-    const name = this.resolveProperty(item);
-
-    return this.providerLookup[name] as ILifetime<T, E> | undefined;
+  get<T>(item: NameSelector<T, E>): ILifetime<T, E> | undefined {
+    return this.lifetimes[this.resolveProperty(item)] as ILifetime<T, E> | undefined;
   }
 
   remove<T>(item: NameSelector<T, E>): boolean {
     const name = this.resolveProperty(item);
 
-    if (!this.providerLookup[name]) return false;
+    if (!this.lifetimes[name]) return false;
 
-    delete this.providerLookup[name];
+    delete this.lifetimes[name];
     return true;
   }
 
-  preBuildValidate() {
-    const missing = Object.keys(this.template)
-      .filter((key) => !this.providerLookup[key])
-      .map((key) => new DependencyError({ type: DependencyErrorType.Existence, lifetime: key }));
-
-    if (missing.length === 1) throw missing[0];
-    else if (missing.length > 1) throw new DependencyMultiError(DependencyMultiErrorType.Build, missing);
-  }
-
-  build() {
-    if (this.provider) return this.provider;
-
-    const provider = new InternalProvider(this) as ActualProvider<E>;
-
+  build(validate: boolean = false): ActualProvider<E> {
     this.preBuildValidate();
 
-    Object.keys(this.template).forEach((providerName) => {
-      Object.defineProperty(provider, providerName, { get: () => provider.get(providerName) });
-    });
+    const createValidationContext = (
+      validation: ProviderValidation<E>,
+      context: ProviderContext<E>,
+    ): ActualProvider<E> => {
+      const provider = new InternalProvider<E>(this, createValidationContext, validation, context);
+      Object.keys(this.template).forEach((providerName) => {
+        Object.defineProperty(provider, providerName, { get: () => provider.get(providerName) });
+      });
+      return provider as ActualProvider<E>;
+    };
 
-    return (this.provider = provider);
+    return createValidationContext({ validate: validate, trail: {} }, null as unknown as {});
   }
 
   resolveProperty<T>(item?: NameSelector<T, E>, Dependency?: DependencyProvider<T, E>): string {
     if (item) return typeof item === 'string' ? item : item(properties(this.template));
     if (Dependency) return this.dependencyToProvider[Dependency.name.toLowerCase()];
     return undefined as unknown as string;
+  }
+
+  private preBuildValidate() {
+    const missing = Object.keys(this.template)
+      .filter((key) => !this.lifetimes[key])
+      .map((key) => new ExistenceDependencyError(key));
+
+    if (missing.length === 1) throw missing[0];
+    else if (missing.length > 1) throw new MultiDependencyError(missing);
   }
 }

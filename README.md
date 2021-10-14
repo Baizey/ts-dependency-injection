@@ -7,19 +7,18 @@ Simple type strong dependency injection
 ### Lifetimes
 - Singleton
 - Transient
-- Scoped [To be implemented]
+- Scoped
 
 ### Providable
 
-anything with a constructor() or constructor(provider: Provider)
+anything with a constructor() or constructor(provider: E)
 
 ### Container functions
-- addSingleton (throws on adding duplicate)
-- addTransient (throws on adding duplicate)
-- add (throws on adding duplicate)
-- tryAdd (boolean on if it added anything)
+- add (void, throws on adding duplicate)
+- tryAdd (true if nothing is already added here, otherwise false)
 - get (Lifetime | undefined)
-- remove (boolean on if it removed anything)
+- remove (true if anything to remove, otherwise false)
+- build (returns ActualProvider<Provider> which is (E & { validate(), get(...) }))
 ## Usage
 
 ### Setting up Provider types
@@ -40,23 +39,21 @@ class Provider {
 Adding dependencies is done in a way that should be familiar to anyone who has used a di in C#
 ```
 const container = new Container(Provider);
-container.addTransient(Alice);
-container.addTransient(Bob, {factory: provider => new Bob(provider, 'hello world')});
-container.addSingleton<IConfiguration>(Configuration, {selector: provider => provider.config})
+container.add(Transient, Alice);
+container.add(Scoped, Bob, {factory: provider => new Bob(provider)});
+container.add<IConfiguration>(Singleton, Configuration, {selector: provider => provider.config})
 ```
-Note here that the default factory is: `(provider) => new Dependency(provider)`
+Note here that the default factory is always: `(provider) => new Dependency(provider)`
 
-The only required parameter is the initial class, the selector is required if the provider name does not match the class name
+The only required parameter is the initial class, the selector is required if the provider name does not match the class name.
 
 ### Building the provider
 ```
 const provider = container.build();
 ```
-It will throw an error if any of the providers dependencies haven't been provided. 
+It will throw an error if any of the Provider properties haven't been added. 
 
-When it is built you can also do `provider.validate()` which will validate that every dependency can be provided
-
-This should only be done in a separate unit test to ensure functionality
+When it is built you can also do `provider.validate()` which validates for circular dependencies and bad-scoping, e.g. Singletons depending on Scoped lifetimes.
 
 ### What you need to do on the Dependencies
 There is one caveat with the design of this dependency injector, I do not want to use decorators or similar 'magic'
