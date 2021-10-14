@@ -63,6 +63,20 @@ container.remove(p => p.config);
 container.add<IConfiguration>(Singleton, {dependency: MockConfiguration, selector: p => p.config})
 
 ```
+
+### Extra details
+It is not recommended, but you can add the provider itself to the dependency injection like:
+```
+class Provider {
+    ...
+    provider: Provider = null as unknown as Provider;
+    ...
+}
+container.add(Transient, {factory: provider => provider, selector: p => p.provider})
+```
+
+Note that this does not mean you can retrieve scoped lifetimes from a singleton, that is never allowed
+
 ## Planned features
 
 - built in react-hook
