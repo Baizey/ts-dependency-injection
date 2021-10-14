@@ -4,86 +4,67 @@ Simple type strong dependency injection
 
 ## Overlook
 
-### Lifetimes
-- Singleton
-- Transient
-- Scoped
+Note, this dependency injector does not use decorators. This means there are some limitations to the injection it can be.
 
-### Providable
+With that said, it support Singleton, Scoped and Transient lifetimes, dependency injection for classes, types, strings, or anything else you could think of, excluding async resolving.
 
-anything with a constructor() or constructor(provider: E)
 
-### Container functions
-- add (void, throws on adding duplicate)
-- tryAdd (true if nothing is already added here, otherwise false)
-- get (Lifetime | undefined)
-- remove (true if anything to remove, otherwise false)
-- build (returns ActualProvider<Provider> which is (E & { validate(), get(...) }))
-## Usage
-
-### Setting up Provider types
-For your side of using the dependency injector you have to do 2 things
-- Create a Provider class
-- have add the dependencies to the container
-
-A Provider class can be something like: (you can avoid the null as unknown as Type if you use babel-prefill)
+## Basic usage
+Before the container
 ```
+// A class such as this is required, it does not matter what the values are, just the types and that the properties will exist if created
 class Provider {
   alice: Alice = null as unknown as Alice;
-  bob: Bob = null as unknown as Bob;
+  connectionString: string = null as unknown as string;
   config: IConfiguration = null as unknown as IConfiguration;
 }
 ```
-
-### Creating the container
-Adding dependencies is done in a way that should be familiar to anyone who has used a di in C#
+Creating container and filling it
 ```
+// Create the container, it will take the Provider and use it as a template for which dependencies it expects you to add to it
+// A class has to have a new(provider: Provider) constructor to be eligable for dependency injection
 const container = new Container(Provider);
-container.add(Transient, Alice);
-container.add(Scoped, {selector: p => p.bob, factory: provider => new Bob(provider)});
+
+// The simplest way to add dependencies is if you have a class where you can simply provide it like:
+container.add(Scoped, Alice);
+
+// For any non-class you need to give a factory function and a selector
+container.add(Singleton, {selector: p => p.connectionString, factory: provider => 'stuff'});
+
+// Similarly to non-classes you need to provide a selector if the class name does not match up with the property name (capitalization is ignored):
 container.add<IConfiguration>(Singleton, {dependency: Configuration, selector: provider => provider.config})
 ```
-Note here that the default factory is always: `(provider) => new Dependency(provider)`
-
-The only required parameter is the initial class, the selector is required if the provider name does not match the class name.
-
-### Building the provider
+Validating that dependencies are added and will be resolvable
 ```
+// When building you can optionally set validation to true
+// If validation is true then the provider will keep track of circular dependencies and Singletons trapping Scoped lifetimes
+const validationProvider = container.build(true);
+
+// validate is a simple function that will attempt to provide all properties of the Provider and return a collective error listing all problems found
+validationProvider.validate();
+```
+Utilizing the provider
+```
+// A last validation to note is that if any properties havent been added an error will be thrown when building telling you what's missing
 const provider = container.build();
-```
-It will throw an error if any of the Provider properties haven't been added. 
 
-When it is built you can also do `provider.validate()` which validates for circular dependencies and bad-scoping, e.g. Singletons depending on Scoped lifetimes.
+// Lastly to use the provider you can simply de-construct or retrive them as if they were properties on Provider
+const {alice, connectionString, config} = provider;
 
-### What you need to do on the Dependencies
-There is one caveat with the design of this dependency injector, I do not want to use decorators or similar 'magic'
+// Lifetimes are however respected, so this is a different alice than the de-constructed one
+const alice = provider.alice;
+```
+Usage in testing
+```
+# When testing you can remove and replace dependencies as required, keeping it as close as possible to the real provider
+const container: Container<Provider> = createContainerElsewhere();
 
-This means I cannot know the constructor of any of the dependencies, instead the constructor is enforced to be 
+container.remove(p => p.config);
+container.add<IConfiguration>(Singleton, {dependency: MockConfiguration, selector: p => p.config})
 
 ```
-{ prototype: T, name: string, new(provider: Provider): T }
-```
+## Planned features
 
-This is however not horrible thanks to the deconstruction functionality of JavaScript, which allows you to write constructors like:
-```
-class Bob {
-    private alice: Alice;
-    private config: IConfiguration;
-    
-    constructor({alice, config}: Provider){
-        this.alice = alice;
-        this.config = config;
-    }
-}
-```
-## Global usage
-Great, a provider can be created, but how would you easily access it anywhere? A simple answer, Singleton patten.
-
-The container has 2 static functions 
-```
-getOrCreate<T>(factory?: () => Container<T>): Provider
-getOrCreateAsync<T>(factory?: () => Promise<Container<T>>): Promise<Provider>
-```
-These can be used globally to get the same instance of the provider anywhere
-
-If it's called without a factory function it throws an error if there is no pre-existing provider
+- built in react-hook
+- built in express middleware
+- middleware support in general
