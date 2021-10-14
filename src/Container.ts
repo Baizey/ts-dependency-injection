@@ -16,18 +16,22 @@ import {
   UnknownDependencyError,
 } from './Errors';
 
-type LifetimeProvider<T, E> = new (
-  dependency: DependencyProvider<T, E>,
-  providerName: string,
-  factoryFunction: Factory<T, E>,
-) => ILifetime<T, E>;
+type LifetimeProvider<T, E> = new (name: string, factoryFunction: Factory<T, E>) => ILifetime<T, E>;
 
 type ProviderProvider<E> = { prototype: E; name: string; new (): E };
 
-type DependencyOptions<T, E> = {
-  factory?: Factory<T, E>;
-  selector?: NameSelector<T, E>;
-};
+type DependencyOptions<T, E> =
+  | {
+      dependency?: undefined;
+      factory: Factory<T, E>;
+      selector: NameSelector<T, E>;
+    }
+  | {
+      dependency: DependencyProvider<T, E>;
+      factory?: Factory<T, E>;
+      selector?: NameSelector<T, E>;
+    }
+  | DependencyProvider<T, E>;
 
 export class Container<E> {
   private static provider?: ActualProvider<any>;
@@ -56,26 +60,20 @@ export class Container<E> {
     }, {} as Record<string, string>);
   }
 
-  add<T>(
-    Lifetime: LifetimeProvider<T, E>,
-    Dependency: DependencyProvider<T, E>,
-    options: DependencyOptions<T, E> = {},
-  ): void {
-    if (!this.tryAdd(Lifetime, Dependency, options))
-      throw new DuplicateDependencyError(this.resolveProperty(options.selector, Dependency));
+  add<T>(Lifetime: LifetimeProvider<T, E>, options: DependencyOptions<T, E>): void {
+    if (!this.tryAdd(Lifetime, options)) {
+      const [name] = this.resolvePropertyConstructor(options);
+      throw new DuplicateDependencyError(name);
+    }
   }
 
-  tryAdd<T>(
-    Lifetime: LifetimeProvider<T, E>,
-    Dependency: DependencyProvider<T, E>,
-    { factory = (provider: E) => new Dependency(provider), selector }: DependencyOptions<T, E> = {},
-  ): boolean {
-    const providerName = this.resolveProperty(selector, Dependency);
+  tryAdd<T>(Lifetime: LifetimeProvider<T, E>, options: DependencyOptions<T, E>): boolean {
+    const [name, factory, dependency] = this.resolvePropertyConstructor(options);
 
-    if (!providerName) throw new UnknownDependencyError(Dependency.name);
-    if (this.lifetimes[providerName]) return false;
+    if (!name) throw new UnknownDependencyError(dependency?.name || '');
+    if (this.lifetimes[name]) return false;
 
-    this.lifetimes[providerName] = new Lifetime(Dependency, providerName, factory);
+    this.lifetimes[name] = new Lifetime(name, factory);
     return true;
   }
 
@@ -95,24 +93,35 @@ export class Container<E> {
   build(validate: boolean = false): ActualProvider<E> {
     this.preBuildValidate();
 
-    const createValidationContext = (
-      validation: ProviderValidation<E>,
-      context: ProviderContext<E>,
-    ): ActualProvider<E> => {
-      const provider = new InternalProvider<E>(this, createValidationContext, validation, context);
-      Object.keys(this.template).forEach((providerName) => {
-        Object.defineProperty(provider, providerName, { get: () => provider.get(providerName) });
+    const createContext = (validation: ProviderValidation<E>, context: ProviderContext<E>): ActualProvider<E> => {
+      const provider = new InternalProvider<E>(this, createContext, validation, context);
+      Object.keys(this.template).forEach((name) => {
+        Object.defineProperty(provider, name, { get: () => provider.get(name) });
       });
       return provider as ActualProvider<E>;
     };
 
-    return createValidationContext({ validate: validate, trail: {} }, null as unknown as {});
+    return createContext({ validate: validate, trail: {} }, null as unknown as {});
   }
 
-  resolveProperty<T>(item?: NameSelector<T, E>, Dependency?: DependencyProvider<T, E>): string {
+  resolveProperty<T>(item?: NameSelector<T, E>, dependency?: DependencyProvider<T, E>): string {
     if (item) return typeof item === 'string' ? item : item(properties(this.template));
-    if (Dependency) return this.dependencyToProvider[Dependency.name.toLowerCase()];
-    return undefined as unknown as string;
+    if (dependency) return this.dependencyToProvider[dependency.name.toLowerCase()];
+    return '';
+  }
+
+  private resolvePropertyConstructor<T>(
+    options: DependencyOptions<T, E>,
+  ): [string, Factory<T, E>, DependencyProvider<T, E> | undefined] {
+    if (typeof options === 'function') {
+      return [this.resolveProperty(undefined, options), (p) => new options(p), options];
+    } else if (options.dependency) {
+      const { dependency, selector, factory = (p) => new dependency(p) } = options;
+      return [this.resolveProperty(selector, dependency), factory, dependency];
+    } else {
+      const { selector, factory } = options;
+      return [this.resolveProperty(selector), factory, undefined];
+    }
   }
 
   private preBuildValidate() {

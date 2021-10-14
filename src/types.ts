@@ -4,8 +4,8 @@ import { InternalProvider } from './InternalProvider';
 export type Factory<T, E> = (provider: E) => T;
 
 export type ProviderValidation<E> = {
-  singletonBlockingScope?: string;
-  trail: Record<string, string>;
+  lastSingleton?: string;
+  trail: Record<string, boolean>;
   validate: boolean;
 };
 
@@ -19,4 +19,4 @@ export type DependencyProvider<T, E> =
   | { prototype: T; name: string; new (provider: E): T }
   | { prototype: T; name: string; new (): T };
 
-export type NameSelector<T, E> = string | ((provider: Keys<T, E>) => string);
+export type NameSelector<T, E> = string | ((p: Keys<T, E>) => string);

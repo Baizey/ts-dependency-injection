@@ -1,8 +1,8 @@
-import { ActualProvider, DependencyProvider } from '../types';
+import { ActualProvider, Factory } from '../types';
 
 export interface ILifetime<T, E> {
-  readonly dependency: DependencyProvider<T, E>;
-  readonly providerName: string;
+  readonly name: string;
+  readonly factory: Factory<T, E>;
 
   provide(provider: ActualProvider<E>): T;
 }

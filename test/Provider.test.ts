@@ -7,9 +7,9 @@ describe('Get', () => {
   test('Succeed, via get property', () => {
     const container = new Container(Provider);
     const expectedAlice = new Alice();
-    container.add(Singleton, Alice, { factory: () => expectedAlice });
+    container.add(Singleton, { dependency: Alice, factory: () => expectedAlice });
     container.add(Singleton, Bob);
-    container.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
     const sut = container.build();
 
     const alice = sut.alicE;
@@ -19,9 +19,9 @@ describe('Get', () => {
   test('Succeed, via classname', () => {
     const container = new Container(Provider);
     const expectedAlice = new Alice();
-    container.add(Singleton, Alice, { factory: () => expectedAlice });
+    container.add(Singleton, { dependency: Alice, factory: () => expectedAlice });
     container.add(Singleton, Bob);
-    container.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
     const sut = container.build();
 
     const alice = sut.get((provider) => provider.alicE);
@@ -42,7 +42,7 @@ describe('Validate', () => {
     const container = new Container(Provider);
     container.add(Singleton, Alice);
     container.add(Singleton, Bob);
-    container.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
     const sut = container.build();
 
     sut.validate();

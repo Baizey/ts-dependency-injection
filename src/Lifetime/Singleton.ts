@@ -1,20 +1,18 @@
-import { ActualProvider, DependencyProvider, Factory } from '../types';
+import { ActualProvider, Factory } from '../types';
 import { ILifetime } from './ILifetime';
 import { CircularDependencyError } from '../Errors';
 
 export class Singleton<T, E> implements ILifetime<T, E> {
-  readonly dependency: DependencyProvider<T, E>;
-  readonly providerName: string;
+  readonly name: string;
+  readonly factory: Factory<T, E>;
   private value?: T;
-  private readonly factory: Factory<T, E>;
 
-  constructor(dependency: DependencyProvider<T, E>, providerName: string, factory: Factory<T, E>) {
-    this.dependency = dependency;
-    this.providerName = providerName;
+  constructor(name: string, factory: Factory<T, E>) {
+    this.name = name;
     this.factory = factory;
   }
 
-  provide(originalProvider: ActualProvider<E>) {
+  provide(provider: ActualProvider<E>) {
     if (this.value) return this.value;
 
     const {
@@ -23,20 +21,11 @@ export class Singleton<T, E> implements ILifetime<T, E> {
         create,
         context,
       },
-    } = originalProvider;
-
-    let provider = originalProvider;
+    } = provider;
 
     if (validate) {
-      if (trail[this.providerName]) throw new CircularDependencyError(this.providerName, this.providerName);
-      provider = create(
-        {
-          validate,
-          singletonBlockingScope: this.providerName,
-          trail: { ...trail, [this.providerName]: this.providerName },
-        },
-        context,
-      );
+      if (trail[this.name]) throw new CircularDependencyError(this.name, this.name);
+      provider = create({ validate, lastSingleton: this.name, trail: { ...trail, [this.name]: true } }, context);
     }
 
     return (this.value = this.factory(provider));

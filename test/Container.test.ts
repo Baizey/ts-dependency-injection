@@ -8,6 +8,7 @@ import {
   MultiDependencyError,
   UnknownDependencyError,
 } from '../src/Errors';
+import { BasicTypesProvider } from './models/BasicTypesProvider';
 
 class Unknown {}
 
@@ -16,7 +17,7 @@ describe('Add', () => {
     const sut = new Container(Provider);
     sut.add(Singleton, Alice);
     sut.add(Singleton, Bob);
-    sut.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
     const actual = sut.get(properties(new Provider()).alicE);
     actual?.provide(sut.build());
@@ -28,9 +29,9 @@ describe('Add', () => {
     const sut = new Container(Provider);
     const expected = new Alice();
     const factory = () => expected;
-    sut.add(Singleton, Alice, { factory });
+    sut.add(Singleton, { dependency: Alice, factory });
     sut.add(Scoped, Bob);
-    sut.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
     const actual = sut.get(properties(new Provider()).alicE);
 
@@ -41,9 +42,9 @@ describe('Add', () => {
     const sut = new Container(Provider);
     const expected = new Alice();
     const factory = () => expected;
-    sut.add(Singleton, Alice, { factory });
+    sut.add(Singleton, { dependency: Alice, factory });
     sut.add(Singleton, Bob);
-    sut.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
     const actual = sut.get(properties(new Provider()).alicE);
 
@@ -60,9 +61,9 @@ describe('Add', () => {
   });
   test('Error duplicate with selector', () => {
     const sut = new Container(Provider);
-    sut.add(Singleton, Alice, { selector: (provider) => provider.alicE });
+    sut.add(Singleton, { dependency: Alice, selector: (provider) => provider.alicE });
 
-    expect(() => sut.add(Singleton, Alice, { selector: (provider) => provider.alicE })).toThrowError(
+    expect(() => sut.add(Singleton, { dependency: Alice, selector: (provider) => provider.alicE })).toThrowError(
       new DuplicateDependencyError(properties(new Provider()).alicE),
     );
   });
@@ -70,13 +71,22 @@ describe('Add', () => {
     const sut = new Container(Provider);
     expect(() => sut.add(Singleton, Unknown)).toThrowError(new UnknownDependencyError(Unknown.name));
   });
+  test('Basic types', () => {
+    const container = new Container(BasicTypesProvider);
+    container.add(Singleton, { factory: () => '', selector: (p) => p.a });
+    container.add(Transient, { factory: () => [1, 2, 3], selector: (p) => p.b });
+    container.add(Scoped, { factory: () => [{ a: 1 }], selector: (p) => p.c });
+    const provider = container.build(true);
+    provider.validate();
+    expect(true).toBeTruthy();
+  });
 });
 
 describe('TryAdd', () => {
   test('No options', () => {
     const sut = new Container(Provider);
     sut.add(Singleton, Bob);
-    sut.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
     sut.tryAdd(Singleton, Alice);
     const actual = sut.get(properties(new Provider()).alicE);
@@ -90,9 +100,9 @@ describe('TryAdd', () => {
     const expected = new Alice();
     const factory = () => expected;
     sut.add(Singleton, Bob);
-    sut.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
-    sut.tryAdd(Singleton, Alice, { factory });
+    sut.tryAdd(Singleton, { dependency: Alice, factory });
     const actual = sut.get(properties(new Provider()).alicE);
 
     expect(actual).toBeInstanceOf(Singleton);
@@ -102,9 +112,9 @@ describe('TryAdd', () => {
     const sut = new Container(Provider);
     const expected = new Alice();
     sut.add(Singleton, Bob);
-    sut.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
-    sut.tryAdd(Singleton, Alice, { factory: () => expected });
+    sut.tryAdd(Singleton, { dependency: Alice, factory: () => expected });
     sut.tryAdd(Singleton, Alice);
     const actual = sut.build().alicE;
 
@@ -141,9 +151,9 @@ describe('Build', () => {
     const sut = new Container(Provider);
     const expectedAlice = new Alice();
     const expectedBob = new Bob({ alicE: expectedAlice } as Provider);
-    sut.add<Alice>(Singleton, Alice, { factory: () => expectedAlice });
-    sut.add<Bob>(Transient, Bob, { factory: () => expectedBob });
-    sut.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    sut.add<Alice>(Singleton, { dependency: Alice, factory: () => expectedAlice });
+    sut.add<Bob>(Transient, { dependency: Bob, factory: () => expectedBob });
+    sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
     const alice = sut.build().alicE;
     const bob = sut.build().boB;
@@ -154,7 +164,7 @@ describe('Build', () => {
   test('Error, missing 1 dependency', () => {
     const container = new Container(Provider);
     container.add(Singleton, Bob);
-    container.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
     expect(() => container.build()).toThrowError(new ExistenceDependencyError(properties(new Provider()).alicE));
   });

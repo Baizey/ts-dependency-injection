@@ -10,7 +10,7 @@ describe('Singleton', () => {
     const container = new Container(Provider);
     container.add(Singleton, Alice);
     container.add(Singleton, Bob);
-    container.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
     const sut = container.get(properties(new Provider()).alicE);
 
     const a = sut?.provide(container.build());
@@ -21,7 +21,7 @@ describe('Singleton', () => {
     const container = new Container(Provider);
     container.add(Singleton, Alice);
     container.add(Singleton, Bob);
-    container.add(Singleton, Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
     const sut = container.get(properties(new Provider()).alicE);
 
     const a = sut?.provide(container.build());
@@ -48,7 +48,7 @@ describe('Transient', () => {
     const container = new Container(Provider);
     container.add(Transient, Alice);
     container.add(Transient, Bob);
-    container.add(Transient, Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Transient, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
     const sut = container.get(properties(new Provider()).alicE);
 
     const a = sut?.provide(container.build());
@@ -59,7 +59,7 @@ describe('Transient', () => {
     const container = new Container(Provider);
     container.add(Transient, Alice);
     container.add(Transient, Bob);
-    container.add(Transient, Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Transient, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
     const sut = container.get(properties(new Provider()).alicE);
 
     const a = sut?.provide(container.build());
@@ -86,7 +86,7 @@ describe('Scoped', () => {
     const container = new Container(Provider);
     container.add(Scoped, Alice);
     container.add(Scoped, Bob);
-    container.add(Scoped, Dummy, { selector: (provider) => provider.totalWhackYo });
+    container.add(Scoped, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
     const sut = container.get(properties(new Provider()).alicE);
     const provider = container.build();
     provider._.context = {};
@@ -97,9 +97,9 @@ describe('Scoped', () => {
   });
   test('Lifetime', () => {
     const container = new Container(ScopedProvider);
-    container.add(Scoped, ScopedA, { selector: (provider) => provider.a });
-    container.add(Scoped, ScopedB, { selector: (provider) => provider.b });
-    container.add(Scoped, ScopedC, { selector: (provider) => provider.c });
+    container.add(Scoped, { dependency: ScopedA, selector: (provider) => provider.a });
+    container.add(Scoped, { dependency: ScopedB, selector: (provider) => provider.b });
+    container.add(Scoped, { dependency: ScopedC, selector: (provider) => provider.c });
     const { a, b, c } = container.build();
 
     // a should be its own context
@@ -127,7 +127,7 @@ describe('Scoped', () => {
     const container = new Container(Provider);
     container.add(Singleton, Bob);
     container.add(Scoped, Alice);
-    container.add(Singleton, Dummy, { selector: (p) => p.totalWhackYo });
+    container.add(Singleton, { dependency: Dummy, selector: (p) => p.totalWhackYo });
     const sut = container.get(properties(new Provider()).boB);
     const provider = container.build(true);
     provider._.context = {};
