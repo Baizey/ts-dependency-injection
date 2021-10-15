@@ -87,13 +87,13 @@ DependencyOptions<T, E>:
     // A factory function and a selector, which is a type-strong helper to select a type-matching property in E
     | { 
         factory: (p: ServiceProvider<E>) => T,
-        selector: (Keys<T, E>) => string
-      } 
+        selector: NameSelector<T, E>
+      }
       
     // A class constructor and selector, useful if the class name does not match the property in E it should be provided by
     | { 
         dependency: DependencyConstructor<T, E>,
-        selector?: NameSelector<T, E>
+        selector: NameSelector<T, E>
       } 
       
 // It is a requirement that any dependency either has a zero-parameter constructor or the first parameter taking in an instance of E
