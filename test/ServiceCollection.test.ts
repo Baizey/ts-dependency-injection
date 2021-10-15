@@ -9,7 +9,7 @@ class Unknown {}
 describe('Add', () => {
   test('No options', () => {
     const sut = new ServiceCollection(Provider);
-    sut.add(Singleton, { dependency: Alice });
+    sut.add(Singleton, Alice);
     sut.add(Singleton, Bob);
     sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
@@ -23,7 +23,7 @@ describe('Add', () => {
     const sut = new ServiceCollection(Provider);
     const expected = new Alice();
     const factory = () => expected;
-    sut.add(Singleton, { dependency: Alice, factory });
+    sut.add(Singleton, { factory, selector: (p) => p.alicE });
     sut.add(Scoped, Bob);
     sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
@@ -36,7 +36,7 @@ describe('Add', () => {
     const sut = new ServiceCollection(Provider);
     const expected = new Alice();
     const factory = () => expected;
-    sut.add(Singleton, { dependency: Alice, factory });
+    sut.add(Singleton, { factory, selector: (p) => p.alicE });
     sut.add(Singleton, Bob);
     sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
@@ -95,7 +95,7 @@ describe('TryAdd', () => {
     sut.add(Singleton, Bob);
     sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
-    sut.tryAdd(Singleton, { dependency: Alice, factory });
+    sut.tryAdd(Singleton, { factory, selector: (p) => p.alicE });
     const actual = sut.get(properties(new Provider()).alicE);
 
     expect(actual).toBeInstanceOf(Singleton);
@@ -107,7 +107,7 @@ describe('TryAdd', () => {
     sut.add(Singleton, Bob);
     sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
-    sut.tryAdd(Singleton, { dependency: Alice, factory: () => expected });
+    sut.tryAdd(Singleton, { factory: () => expected, selector: (p) => p.alicE });
     sut.tryAdd(Singleton, Alice);
     const actual = sut.build().alicE;
 
@@ -254,8 +254,8 @@ describe('Build', () => {
     const sut = new ServiceCollection(Provider);
     const expectedAlice = new Alice();
     const expectedBob = new Bob({ alicE: expectedAlice } as Required<Provider>);
-    sut.add<Alice>(Singleton, { dependency: Alice, factory: () => expectedAlice });
-    sut.add<Bob>(Transient, { dependency: Bob, factory: () => expectedBob });
+    sut.add<Alice>(Singleton, { factory: () => expectedAlice, selector: (p) => p.alicE });
+    sut.add<Bob>(Transient, { factory: () => expectedBob, selector: (p) => p.boB });
     sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
     const alice = sut.build().alicE;

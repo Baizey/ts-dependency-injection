@@ -13,7 +13,6 @@ export type DependencyOptions<T, E> =
     }
   | {
       dependency: DependencyConstructor<T, Required<E>>;
-      factory?: Factory<T, Required<E>>;
-      selector?: NameSelector<T, Required<E>>;
+      selector: NameSelector<T, Required<E>>;
     }
   | DependencyConstructor<T, Required<E>>;

@@ -1,6 +1,6 @@
 ﻿import { IServiceCollection } from '../ServiceCollection';
 import { NameSelector, ProviderFactory, ProviderScope, ProviderValidation } from '../types';
-import { CircularDependencyError, DependencyErrorType, ErrorTypes } from '../Errors';
+import { CircularDependencyError, DependencyErrorType, ErrorTypes, ExistenceDependencyError } from '../Errors';
 import { ProviderContext } from './types';
 import { IServiceProvider } from './IServiceProvider';
 
@@ -27,7 +27,8 @@ export class InternalServiceProvider<E> implements IServiceProvider<E> {
 
     try {
       const actual = scope ? (this as unknown as ServiceProvider<E>) : create(validation, {});
-      return container.get(name)?.provide(actual) as T;
+      const lifetime = container.get<T>(name);
+      if (lifetime) return lifetime.provide(actual);
     } catch (e) {
       const error = e as ErrorTypes;
       switch (error.type) {
@@ -40,6 +41,7 @@ export class InternalServiceProvider<E> implements IServiceProvider<E> {
           throw e;
       }
     }
+    throw new ExistenceDependencyError(name);
   }
 }
 

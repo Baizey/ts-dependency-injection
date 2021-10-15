@@ -1,11 +1,6 @@
 import { ILifetime, Scoped, Singleton, Transient } from '../Lifetime';
 import { DependencyOptions, LifetimeConstructor, ProviderConstructor } from './types';
-import {
-  DuplicateDependencyError,
-  ExistenceDependencyError,
-  MultiDependencyError,
-  UnknownDependencyError,
-} from '../Errors';
+import { DuplicateDependencyError, MultiDependencyError, UnknownDependencyError } from '../Errors';
 import { DependencyConstructor, Factory, NameSelector, ProviderScope, ProviderValidation } from '../types';
 import { InternalServiceProvider, ServiceProvider } from '../ServiceProvider';
 import { properties } from '../utils';
@@ -60,7 +55,7 @@ export class ServiceCollection<E> implements IServiceCollection<E> {
     return true;
   }
 
-  build(validate: boolean = false): ServiceProvider<E> {
+  build(validate: boolean = true): ServiceProvider<E> {
     const createContext = (validation: ProviderValidation, context: ProviderScope): ServiceProvider<E> => {
       const provider = new InternalServiceProvider<E>(this, createContext, validation, context);
       Object.keys(this.template).forEach((name) => {
@@ -79,8 +74,7 @@ export class ServiceCollection<E> implements IServiceCollection<E> {
 
     for (let key of keys) {
       try {
-        if (!this.lifetimes[key]) unresolved.push(new ExistenceDependencyError(key));
-        else serviceProvider.getService(key);
+        serviceProvider.getService(key);
       } catch (e: unknown) {
         unresolved.push(e as Error);
       }
@@ -103,8 +97,8 @@ export class ServiceCollection<E> implements IServiceCollection<E> {
     if (typeof options === 'function') {
       return [this.resolveProperty(undefined, options), (p) => new options(p), options];
     } else if (options.dependency) {
-      const { dependency, selector, factory = (p) => new dependency(p) } = options;
-      return [this.resolveProperty(selector, dependency), factory, dependency];
+      const { dependency, selector } = options;
+      return [this.resolveProperty(selector, dependency), (p) => new dependency(p), dependency];
     } else {
       const { selector, factory } = options;
       return [this.resolveProperty(selector), factory, undefined];

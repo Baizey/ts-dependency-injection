@@ -1,13 +1,30 @@
 ﻿import 'jest';
-import { ServiceCollection, Singleton } from '../src';
-import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from './models';
-import { CircularDependencyError, MultiDependencyError } from '../src/Errors';
+import { Scoped, ServiceCollection, Singleton } from '../src';
+import {
+  Alice,
+  Bob,
+  CircularA,
+  CircularB,
+  CircularProvider,
+  Dummy,
+  Provider,
+  ScopedA,
+  ScopedB,
+  ScopedC,
+  ScopedProvider,
+} from './models';
+import {
+  CircularDependencyError,
+  ExistenceDependencyError,
+  MultiDependencyError,
+  SingletonScopedDependencyError,
+} from '../src/Errors';
 
 describe('Get', () => {
   test('Succeed, via get property', () => {
     const container = new ServiceCollection(Provider);
     const expectedAlice = new Alice();
-    container.add(Singleton, { dependency: Alice, factory: () => expectedAlice });
+    container.add(Singleton, { factory: () => expectedAlice, selector: (p) => p.alicE });
     container.add(Singleton, Bob);
     container.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
     const sut = container.build();
@@ -19,7 +36,7 @@ describe('Get', () => {
   test('Succeed, via classname', () => {
     const container = new ServiceCollection(Provider);
     const expectedAlice = new Alice();
-    container.add(Singleton, { dependency: Alice, factory: () => expectedAlice });
+    container.add(Singleton, { factory: () => expectedAlice, selector: (p) => p.alicE });
     container.add(Singleton, Bob);
     container.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
     const sut = container.build();
@@ -57,6 +74,26 @@ describe('Validate', () => {
       new MultiDependencyError([
         new CircularDependencyError('CircularA', 'CircularB'),
         new CircularDependencyError('CircularB', 'CircularA'),
+      ]),
+    );
+  });
+  test('Error, Scoped-Singleton dependency', () => {
+    const container = new ServiceCollection(ScopedProvider);
+    container.add(Scoped, { dependency: ScopedA, selector: (p) => p.a });
+    container.add(Scoped, { dependency: ScopedB, selector: (p) => p.b });
+    container.add(Singleton, { dependency: ScopedC, selector: (p) => p.c });
+
+    expect(() => container.validate()).toThrowError(
+      new MultiDependencyError([new SingletonScopedDependencyError('c', 'b')]),
+    );
+  });
+  test('Error, Scoped-Singleton dependency', () => {
+    const container = new ServiceCollection(ScopedProvider);
+    expect(() => container.validate()).toThrowError(
+      new MultiDependencyError([
+        new ExistenceDependencyError('a'),
+        new ExistenceDependencyError('b'),
+        new ExistenceDependencyError('c'),
       ]),
     );
   });

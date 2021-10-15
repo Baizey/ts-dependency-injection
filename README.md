@@ -156,7 +156,7 @@ returns `ILifetime<T, E> | undefined`
 returns `boolean`, true if anything, false otherwise
 
 #### Build
-- `build(boolean = false)`
+- `build(validate: boolean = true)`
 
 returns `ServiceProvider<T, E>`
 
