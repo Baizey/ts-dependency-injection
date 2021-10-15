@@ -5,8 +5,8 @@ describe('Utils', () => {
   describe('properties', () => {
     test('basic', () => {
       class Test {
-        a: string = null as unknown as string;
-        bobcat: string = null as unknown as string;
+        a?: string;
+        bobcat?: string;
       }
 
       const actual = properties(new Test());

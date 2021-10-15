@@ -10,9 +10,25 @@ With that said, it support Singleton, Scoped and Transient lifetimes, dependency
 
 
 ## Basic usage
-Before the container
+Before the container you need to create a property/type template.
 ```
-// A class such as this is required, it does not matter what the values are, just the types and that the properties will exist if created
+// There is no truly clean way of doing this as-is, but the simplest solution is adding this to tsconfig.json:
+{
+  "compilerOptions": {
+    "useDefineForClassFields": true
+  },
+}
+// Then you can create the template as such
+class ProviderTemplate {
+  alice?: Alice;
+  connectionString?: string;
+  config?: IConfiguration;
+}
+// To avoid undefined type issues you need to either specify Required<ProviderTemplate> or create a type for this
+type Provider = Required<ProviderTemplate>
+
+// If you absolutely cannot set this compiler option, you need to do something like:
+// Note that this does not need the Required previously mentioned
 class Provider {
   alice: Alice = null as unknown as Alice;
   connectionString: string = null as unknown as string;
@@ -23,7 +39,7 @@ Creating container and filling it
 ```
 // Create the container, it will take the Provider and use it as a template for which dependencies it expects you to add to it
 // A class has to have a new(provider: Provider) constructor to be eligable for dependency injection
-const container = new Container(Provider);
+const container = new Container(ProviderTemplate);
 
 // The simplest way to add dependencies is if you have a class where you can simply provide it like:
 container.add(Scoped, Alice);

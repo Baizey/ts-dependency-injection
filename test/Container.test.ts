@@ -1,5 +1,5 @@
 ﻿import 'jest';
-import { Alice, Bob, Dummy, Provider } from './models';
+import { Alice, BasicTypesProvider, Bob, Dummy, Provider } from './models';
 import { properties } from '../src/utils';
 import { Container, Scoped, Singleton, Transient } from '../src';
 import {
@@ -8,14 +8,13 @@ import {
   MultiDependencyError,
   UnknownDependencyError,
 } from '../src/Errors';
-import { BasicTypesProvider } from './models/BasicTypesProvider';
 
 class Unknown {}
 
 describe('Add', () => {
   test('No options', () => {
     const sut = new Container(Provider);
-    sut.add(Singleton, Alice);
+    sut.add(Singleton, { dependency: Alice });
     sut.add(Singleton, Bob);
     sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
 
@@ -150,7 +149,7 @@ describe('Build', () => {
   test('Succeed', () => {
     const sut = new Container(Provider);
     const expectedAlice = new Alice();
-    const expectedBob = new Bob({ alicE: expectedAlice } as Provider);
+    const expectedBob = new Bob({ alicE: expectedAlice } as Required<Provider>);
     sut.add<Alice>(Singleton, { dependency: Alice, factory: () => expectedAlice });
     sut.add<Bob>(Transient, { dependency: Bob, factory: () => expectedBob });
     sut.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });

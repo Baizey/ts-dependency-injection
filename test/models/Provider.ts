@@ -1,8 +1,10 @@
 export class Provider {
-  alicE: Alice = null as unknown as Alice;
-  boB: Bob = null as unknown as Bob;
-  totalWhackYo: Dummy = null as unknown as Dummy;
+  alicE?: Alice;
+  boB?: Bob;
+  totalWhackYo?: Dummy;
 }
+
+type P = Required<Provider>;
 
 export class Alice {
   private static nextId: number = 0;
@@ -20,7 +22,7 @@ export class Bob {
   readonly id: number;
   readonly a: Alice;
 
-  constructor({ alicE }: Provider) {
+  constructor({ alicE }: P) {
     this.a = alicE;
     this.id = Bob.nextId++;
   }

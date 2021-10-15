@@ -5,14 +5,14 @@ import { CircularDependencyError, DependencyErrorType, ErrorTypes, MultiDependen
 export class InternalProvider<E> {
   readonly _: {
     container: Container<E>;
-    create: ProviderCreator<E>;
-    validation: ProviderValidation<E>;
-    context: ProviderContext<E>;
+    create: ProviderCreator<Required<E>>;
+    validation: ProviderValidation<Required<E>>;
+    context: ProviderContext<Required<E>>;
   };
 
   constructor(
     container: Container<E>,
-    create: ProviderCreator<E>,
+    create: ProviderCreator<Required<E>>,
     validation: ProviderValidation<E>,
     context: ProviderContext<E>,
   ) {
@@ -24,13 +24,13 @@ export class InternalProvider<E> {
     };
   }
 
-  get<T>(nameSelector: NameSelector<T, E>) {
+  get<T>(nameSelector: NameSelector<T, Required<E>>): T {
     const { container, context, create, validation } = this._;
     const name = container.resolveProperty(nameSelector);
 
     try {
-      const actual = context ? (this as unknown as ActualProvider<E>) : create(validation, {});
-      return container.get(name)?.provide(actual);
+      const actual = context ? (this as unknown as ActualProvider<Required<E>>) : create(validation, {});
+      return container.get(name)?.provide(actual) as T;
     } catch (e) {
       const error = e as ErrorTypes;
       switch (error.type) {

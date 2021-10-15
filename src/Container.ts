@@ -35,39 +35,38 @@ type DependencyOptions<T, E> =
 
 export class Container<E> {
   private static provider?: ActualProvider<any>;
+  readonly template: Required<E>;
+  private readonly lifetimes: Record<string, ILifetime<any, Required<E>>> = {};
+  private readonly dependencyToProvider: Record<string, string>;
 
-  public static getOrCreate<T>(factory?: () => Container<T>): ActualProvider<T> {
+  public static getOrCreate<E>(factory?: () => Container<E>): ActualProvider<Required<E>> {
     if (this.provider) return this.provider;
     if (!factory) throw new Error('Factory not provided and no global provider exists');
     return (this.provider = factory().build());
   }
 
-  public static async getOrCreateAsync<T>(factory?: () => Promise<Container<T>>): Promise<ActualProvider<T>> {
+  public static async getOrCreateAsync<E>(factory?: () => Promise<Container<E>>): Promise<ActualProvider<Required<E>>> {
     if (this.provider) return this.provider;
     if (!factory) throw new Error('Factory not provided and no global provider exists');
     return (this.provider = (await factory()).build());
   }
 
-  readonly template: E;
-  private readonly lifetimes: Record<string, ILifetime<any, E>> = {};
-  private readonly dependencyToProvider: Record<string, string>;
-
   constructor(ProviderTemplate: ProviderProvider<E>) {
-    this.template = new ProviderTemplate();
+    this.template = new ProviderTemplate() as Required<E>;
     this.dependencyToProvider = Object.keys(this.template).reduce((a, b) => {
       a[b.toLowerCase()] = b;
       return a;
     }, {} as Record<string, string>);
   }
 
-  add<T>(Lifetime: LifetimeProvider<T, E>, options: DependencyOptions<T, E>): void {
+  add<T>(Lifetime: LifetimeProvider<T, Required<E>>, options: DependencyOptions<T, Required<E>>): void {
     if (!this.tryAdd(Lifetime, options)) {
       const [name] = this.resolvePropertyConstructor(options);
       throw new DuplicateDependencyError(name);
     }
   }
 
-  tryAdd<T>(Lifetime: LifetimeProvider<T, E>, options: DependencyOptions<T, E>): boolean {
+  tryAdd<T>(Lifetime: LifetimeProvider<T, Required<E>>, options: DependencyOptions<T, Required<E>>): boolean {
     const [name, factory, dependency] = this.resolvePropertyConstructor(options);
 
     if (!name) throw new UnknownDependencyError(dependency?.name || '');
@@ -81,7 +80,7 @@ export class Container<E> {
     return this.lifetimes[this.resolveProperty(item)] as ILifetime<T, E> | undefined;
   }
 
-  remove<T>(item: NameSelector<T, E>): boolean {
+  remove<T>(item: NameSelector<T, Required<E>>): boolean {
     const name = this.resolveProperty(item);
 
     if (!this.lifetimes[name]) return false;
@@ -90,29 +89,32 @@ export class Container<E> {
     return true;
   }
 
-  build(validate: boolean = false): ActualProvider<E> {
+  build(validate: boolean = false): ActualProvider<Required<E>> {
     this.preBuildValidate();
 
-    const createContext = (validation: ProviderValidation<E>, context: ProviderContext<E>): ActualProvider<E> => {
+    const createContext = (
+      validation: ProviderValidation<E>,
+      context: ProviderContext<E>,
+    ): ActualProvider<Required<E>> => {
       const provider = new InternalProvider<E>(this, createContext, validation, context);
       Object.keys(this.template).forEach((name) => {
         Object.defineProperty(provider, name, { get: () => provider.get(name) });
       });
-      return provider as ActualProvider<E>;
+      return provider as ActualProvider<Required<E>>;
     };
 
     return createContext({ validate: validate, trail: {} }, null as unknown as {});
   }
 
-  resolveProperty<T>(item?: NameSelector<T, E>, dependency?: DependencyProvider<T, E>): string {
+  resolveProperty<T>(item?: NameSelector<T, Required<E>>, dependency?: DependencyProvider<T, Required<E>>): string {
     if (item) return typeof item === 'string' ? item : item(properties(this.template));
     if (dependency) return this.dependencyToProvider[dependency.name.toLowerCase()];
     return '';
   }
 
   private resolvePropertyConstructor<T>(
-    options: DependencyOptions<T, E>,
-  ): [string, Factory<T, E>, DependencyProvider<T, E> | undefined] {
+    options: DependencyOptions<T, Required<E>>,
+  ): [string, Factory<T, Required<E>>, DependencyProvider<T, Required<E>> | undefined] {
     if (typeof options === 'function') {
       return [this.resolveProperty(undefined, options), (p) => new options(p), options];
     } else if (options.dependency) {

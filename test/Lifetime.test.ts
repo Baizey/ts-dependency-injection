@@ -1,9 +1,20 @@
 ﻿import 'jest';
 import { Container, Scoped, Singleton, Transient } from '../src';
-import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from './models';
+import {
+  Alice,
+  Bob,
+  CircularA,
+  CircularB,
+  CircularProvider,
+  Dummy,
+  Provider,
+  ScopedA,
+  ScopedB,
+  ScopedC,
+  ScopedProvider,
+} from './models';
 import { properties } from '../src/utils';
 import { CircularDependencyError, SingletonScopedDependencyError } from '../src/Errors';
-import { ScopedA, ScopedB, ScopedC, ScopedProvider } from './models/scopedProvider';
 
 describe('Singleton', () => {
   test('Invoke', () => {

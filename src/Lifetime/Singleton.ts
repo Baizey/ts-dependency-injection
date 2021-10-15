@@ -12,7 +12,7 @@ export class Singleton<T, E> implements ILifetime<T, E> {
     this.factory = factory;
   }
 
-  provide(provider: ActualProvider<E>) {
+  provide(provider: ActualProvider<Required<E>>) {
     if (this.value) return this.value;
 
     const {

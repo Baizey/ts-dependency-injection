@@ -4,14 +4,14 @@ import { CircularDependencyError } from '../Errors';
 
 export class Transient<T, E> implements ILifetime<T, E> {
   readonly name: string;
-  readonly factory: Factory<T, E>;
+  readonly factory: Factory<T, Required<E>>;
 
-  constructor(name: string, factory: Factory<T, E>) {
+  constructor(name: string, factory: Factory<T, Required<E>>) {
     this.name = name;
     this.factory = factory;
   }
 
-  provide(provider: ActualProvider<E>) {
+  provide(provider: ActualProvider<Required<E>>) {
     const {
       _: {
         validation: { validate, trail, lastSingleton },
