@@ -1,5 +1,5 @@
 ﻿import 'jest';
-import { Container, Scoped, Singleton, Transient } from '../src';
+import { ServiceCollection, Scoped, Singleton, Transient } from '../src';
 import {
   Alice,
   Bob,
@@ -18,7 +18,7 @@ import { CircularDependencyError, SingletonScopedDependencyError } from '../src/
 
 describe('Singleton', () => {
   test('Invoke', () => {
-    const container = new Container(Provider);
+    const container = new ServiceCollection(Provider);
     container.add(Singleton, Alice);
     container.add(Singleton, Bob);
     container.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
@@ -29,7 +29,7 @@ describe('Singleton', () => {
     expect(a).not.toBeUndefined();
   });
   test('Lifetime', () => {
-    const container = new Container(Provider);
+    const container = new ServiceCollection(Provider);
     container.add(Singleton, Alice);
     container.add(Singleton, Bob);
     container.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
@@ -43,7 +43,7 @@ describe('Singleton', () => {
     expect(a).toBe(b);
   });
   test('Circular dependency', () => {
-    const container = new Container(CircularProvider);
+    const container = new ServiceCollection(CircularProvider);
     container.add(Singleton, CircularA);
     container.add(Singleton, CircularB);
     const sut = container.get(properties(new CircularProvider()).CircularA);
@@ -56,7 +56,7 @@ describe('Singleton', () => {
 
 describe('Transient', () => {
   test('Invoke', () => {
-    const container = new Container(Provider);
+    const container = new ServiceCollection(Provider);
     container.add(Transient, Alice);
     container.add(Transient, Bob);
     container.add(Transient, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
@@ -67,7 +67,7 @@ describe('Transient', () => {
     expect(a).not.toBeUndefined();
   });
   test('Lifetime', () => {
-    const container = new Container(Provider);
+    const container = new ServiceCollection(Provider);
     container.add(Transient, Alice);
     container.add(Transient, Bob);
     container.add(Transient, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
@@ -81,7 +81,7 @@ describe('Transient', () => {
     expect(a).not.toBe(b);
   });
   test('Circular dependency', () => {
-    const container = new Container(CircularProvider);
+    const container = new ServiceCollection(CircularProvider);
     container.add(Transient, CircularA);
     container.add(Transient, CircularB);
     const sut = container.get(properties(new CircularProvider()).CircularA);
@@ -94,20 +94,20 @@ describe('Transient', () => {
 
 describe('Scoped', () => {
   test('Invoke', () => {
-    const container = new Container(Provider);
+    const container = new ServiceCollection(Provider);
     container.add(Scoped, Alice);
     container.add(Scoped, Bob);
     container.add(Scoped, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
     const sut = container.get(properties(new Provider()).alicE);
     const provider = container.build();
-    provider._.context = {};
+    provider._.scope = {};
 
     const a = sut?.provide(provider);
 
     expect(a).not.toBeUndefined();
   });
   test('Lifetime', () => {
-    const container = new Container(ScopedProvider);
+    const container = new ServiceCollection(ScopedProvider);
     container.add(Scoped, { dependency: ScopedA, selector: (provider) => provider.a });
     container.add(Scoped, { dependency: ScopedB, selector: (provider) => provider.b });
     container.add(Scoped, { dependency: ScopedC, selector: (provider) => provider.c });
@@ -125,23 +125,23 @@ describe('Scoped', () => {
     expect(c.a).toBe(c.b.a);
   });
   test('Circular dependency', () => {
-    const container = new Container(CircularProvider);
+    const container = new ServiceCollection(CircularProvider);
     container.add(Scoped, CircularA);
     container.add(Scoped, CircularB);
     const sut = container.get(properties(new CircularProvider()).CircularA);
     const provider = container.build(true);
-    provider._.context = {};
+    provider._.scope = {};
 
     expect(() => sut?.provide(provider)).toThrowError(new CircularDependencyError('CircularA', 'CircularB'));
   });
   test('Singleton depending on Scoped', () => {
-    const container = new Container(Provider);
+    const container = new ServiceCollection(Provider);
     container.add(Singleton, Bob);
     container.add(Scoped, Alice);
     container.add(Singleton, { dependency: Dummy, selector: (p) => p.totalWhackYo });
     const sut = container.get(properties(new Provider()).boB);
     const provider = container.build(true);
-    provider._.context = {};
+    provider._.scope = {};
 
     expect(() => sut?.provide(provider)).toThrowError(new SingletonScopedDependencyError('boB', 'alicE'));
   });

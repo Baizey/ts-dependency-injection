@@ -1,21 +1,19 @@
 import { Keys } from './utils';
-import { InternalProvider } from './InternalProvider';
+import { ServiceProvider } from './index';
 
 export type Factory<T, E> = (provider: E) => T;
 
-export type ProviderValidation<E> = {
+export type ProviderValidation = {
   lastSingleton?: string;
   trail: Record<string, boolean>;
   validate: boolean;
 };
 
-export type ProviderContext<E> = Record<string, any>;
+export type ProviderScope = Record<string, any>;
 
-export type ProviderCreator<E> = (validation: ProviderValidation<E>, context: ProviderContext<E>) => ActualProvider<E>;
+export type ProviderFactory<E> = (validation: ProviderValidation, context: ProviderScope) => ServiceProvider<E>;
 
-export type ActualProvider<E> = E & InternalProvider<E>;
-
-export type DependencyProvider<T, E> =
+export type DependencyConstructor<T, E> =
   | { prototype: T; name: string; new (provider: E): T }
   | { prototype: T; name: string; new (): T };
 

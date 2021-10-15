@@ -1,6 +1,7 @@
-import { ActualProvider, Factory } from '../types';
+import { Factory } from '../types';
 import { ILifetime } from './ILifetime';
 import { CircularDependencyError } from '../Errors';
+import { ServiceProvider } from '../ServiceProvider';
 
 export class Singleton<T, E> implements ILifetime<T, E> {
   readonly name: string;
@@ -12,20 +13,20 @@ export class Singleton<T, E> implements ILifetime<T, E> {
     this.factory = factory;
   }
 
-  provide(provider: ActualProvider<Required<E>>) {
+  provide(provider: ServiceProvider<E>) {
     if (this.value) return this.value;
 
     const {
       _: {
         validation: { validate, trail },
         create,
-        context,
+        scope,
       },
     } = provider;
 
     if (validate) {
       if (trail[this.name]) throw new CircularDependencyError(this.name, this.name);
-      provider = create({ validate, lastSingleton: this.name, trail: { ...trail, [this.name]: true } }, context);
+      provider = create({ validate, lastSingleton: this.name, trail: { ...trail, [this.name]: true } }, scope);
     }
 
     return (this.value = this.factory(provider));
