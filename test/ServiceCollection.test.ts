@@ -50,7 +50,7 @@ describe('Add', () => {
     sut.add(Singleton, Alice);
 
     expect(() => sut.add(Singleton, Alice)).toThrowError(
-      new DuplicateDependencyError(properties<Alice, Provider>(new Provider()).alicE),
+      new DuplicateDependencyError(properties(new Provider()).alicE),
     );
   });
   test('Error duplicate with selector', () => {
