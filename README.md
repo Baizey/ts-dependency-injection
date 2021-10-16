@@ -1,5 +1,7 @@
 # Sharp-Dependency-Injection
 
+[![codecov](https://codecov.io/gh/Baizey/ts-dependency-injection/branch/master/graph/badge.svg?token=BD76USM0X4)](https://codecov.io/gh/Baizey/ts-dependency-injection)
+
 Simple type strong dependency injection
 
 ## Goals of this package
