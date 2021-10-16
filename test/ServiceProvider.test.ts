@@ -20,8 +20,8 @@ import {
   SingletonScopedDependencyError,
 } from '../src/Errors';
 
-describe('Get', () => {
-  test('Succeed, via get property', () => {
+describe('GetService', () => {
+  test('Succeed', () => {
     const container = new ServiceCollection(Provider);
     const expectedAlice = new Alice();
     container.add(Singleton, { factory: () => expectedAlice, selector: (p) => p.alicE });
@@ -32,25 +32,6 @@ describe('Get', () => {
     const alice = sut.alicE;
 
     expect(alice).toBe(expectedAlice);
-  });
-  test('Succeed, via classname', () => {
-    const container = new ServiceCollection(Provider);
-    const expectedAlice = new Alice();
-    container.add(Singleton, { factory: () => expectedAlice, selector: (p) => p.alicE });
-    container.add(Singleton, Bob);
-    container.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
-    const sut = container.build();
-
-    const alice = sut.getService((provider) => provider.alicE);
-
-    expect(alice).toBe(expectedAlice);
-  });
-  test('Error, circular dependency', () => {
-    const container = new ServiceCollection(CircularProvider);
-    container.add(Singleton, CircularA);
-    container.add(Singleton, CircularB);
-    const sut = container.build(true);
-    expect(() => sut.CircularA).toThrowError(new CircularDependencyError('CircularA', 'CircularB'));
   });
 });
 

@@ -30,11 +30,10 @@ jobs:
           node-version: 16.11.0 # optional
           token: ${{ github.token }}
           
-      # Install
       - run: npm install
       
       # Test
-      - run: npm run test:cov
+      - run: npm run test
       
       - name: Codecov
         uses: codecov/codecov-action@v2.1.0

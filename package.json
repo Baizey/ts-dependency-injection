@@ -16,9 +16,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "release": "npm publish",
-    "test": "jest",
-    "test:cov": "jest --coverage"
+    "test": "jest --coverage"
   },
   "devDependencies": {
     "@types/jest": "^27.0.2",
