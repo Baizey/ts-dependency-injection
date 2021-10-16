@@ -46,7 +46,7 @@ export class ServiceCollection<E> implements IServiceCollection<E> {
     this.add(Lifetime, options);
   }
 
-  remove<T>(item: NameSelector<T, Required<E>>): boolean {
+  remove<T>(item: NameSelector<T, E>): boolean {
     const name = this.resolveProperty(item);
 
     if (!this.lifetimes[name]) return false;
@@ -85,15 +85,15 @@ export class ServiceCollection<E> implements IServiceCollection<E> {
     throw new MultiDependencyError(unresolved);
   }
 
-  resolveProperty<T>(item?: NameSelector<T, Required<E>>, dependency?: DependencyConstructor<T, Required<E>>): string {
+  resolveProperty<T>(item?: NameSelector<T, E>, dependency?: DependencyConstructor<T, E>): string {
     if (item) return typeof item === 'string' ? item : item(properties(this.template));
     if (dependency) return this.dependencyToProvider[dependency.name.toLowerCase()];
     return '';
   }
 
   private resolvePropertyConstructor<T>(
-    options: DependencyOptions<T, Required<E>>,
-  ): [string, Factory<T, Required<E>>, DependencyConstructor<T, Required<E>> | undefined] {
+    options: DependencyOptions<T, E>,
+  ): [string, Factory<T, E>, DependencyConstructor<T, E> | undefined] {
     if (typeof options === 'function') {
       return [this.resolveProperty(undefined, options), (p) => new options(p), options];
     } else if (options.dependency) {

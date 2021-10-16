@@ -6,21 +6,21 @@ import { ServiceProvider } from '../ServiceProvider';
 export interface IServiceCollection<E> {
   readonly template: Required<E>;
 
-  add<T>(Lifetime: LifetimeConstructor<T, Required<E>>, options: DependencyOptions<T, Required<E>>): void;
+  add<T>(Lifetime: LifetimeConstructor<T, E>, options: DependencyOptions<T, E>): void;
 
-  tryAdd<T>(Lifetime: LifetimeConstructor<T, Required<E>>, options: DependencyOptions<T, Required<E>>): boolean;
+  tryAdd<T>(Lifetime: LifetimeConstructor<T, E>, options: DependencyOptions<T, E>): boolean;
 
   get<T>(item: NameSelector<T, E>): ILifetime<T, E> | undefined;
 
-  replace<T>(Lifetime: LifetimeConstructor<T, Required<E>>, options: DependencyOptions<T, Required<E>>): void;
+  replace<T>(Lifetime: LifetimeConstructor<T, E>, options: DependencyOptions<T, E>): void;
 
-  remove<T>(item: NameSelector<T, Required<E>>): boolean;
+  remove<T>(item: NameSelector<T, E>): boolean;
 
   build(validate?: boolean): ServiceProvider<E>;
 
   validate(): void;
 
-  resolveProperty<T>(item?: NameSelector<T, Required<E>>, dependency?: DependencyConstructor<T, Required<E>>): string;
+  resolveProperty<T>(item?: NameSelector<T, E>, dependency?: DependencyConstructor<T, E>): string;
 
   addSingleton<T>(options: DependencyOptions<T, E>): void;
 

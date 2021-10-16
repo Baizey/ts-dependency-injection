@@ -21,7 +21,7 @@ export class InternalServiceProvider<E> implements IServiceProvider<E> {
     };
   }
 
-  getService<T>(nameSelector: NameSelector<T, Required<E>>): T {
+  getService<T>(nameSelector: NameSelector<T, E>): T {
     const { container, scope, create, validation } = this._;
     const name = container.resolveProperty(nameSelector);
 

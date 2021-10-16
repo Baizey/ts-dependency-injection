@@ -5,14 +5,14 @@ import { ServiceProvider } from '../ServiceProvider';
 
 export class Scoped<T, E> implements ILifetime<T, E> {
   readonly name: string;
-  readonly factory: Factory<T, Required<E>>;
+  readonly factory: Factory<T, E>;
 
-  constructor(name: string, factory: Factory<T, Required<E>>) {
+  constructor(name: string, factory: Factory<T, E>) {
     this.name = name;
     this.factory = factory;
   }
 
-  provide(provider: ServiceProvider<Required<E>>) {
+  provide(provider: ServiceProvider<E>) {
     const {
       _: {
         validation: { validate, lastSingleton, trail },
