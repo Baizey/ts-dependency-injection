@@ -16,6 +16,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "clean": "rmdir /Q/S \"lib\"",
     "test": "jest --coverage"
   },
   "devDependencies": {

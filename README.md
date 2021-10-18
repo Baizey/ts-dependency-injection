@@ -118,8 +118,18 @@ NameSelector<T, E>:
 - `addSingleton<T>(DependencyOptions<T, E>)`
 - `addScoped<T>(DependencyOptions<T, E>)`
 - `addTransient<T>(DependencyOptions<T, E>)`
+- `addProvider(NameSelector<T, E>?)`
 
 Returns `void`
+
+Note: addProvider is a short for 
+
+```
+services.addScoped<ServiceProvider<E>>({
+    factory: p => p.createScoped(), 
+    selector: NameSelector<T, E> || 'provider'
+})
+```
 
 Can throw
 - `UnknownDependencyError` if the resolved name from `DependencyOptions` does not match any property on `E`
@@ -179,6 +189,33 @@ Can throw
 - `getService<T>(NameSelector<T, E>)`
 
 returns `T`
+
+#### createRootScoped
+- `createRootScoped()`
+
+Returns ``ServiceProvider<E>`` with a reset scope as-if you did ``services.build(...)`` again (will keep validation on/off from what you picked)
+
+Note: ``Singleton`` instances that has been / will be instantiated is still shared across all scopes
+
+#### createScoped
+- `createScoped()`
+
+returns ``ServiceProvider<E>`` with a reset validation context.
+
+Warning: Never allow ``Singleton`` lifetimes to keep permanent hold of a provider.
+
+Dummy example of the best way to add the provider to itself:
+
+```
+class WeakProvider {
+    ...
+    provider?: ServiceProvider<WeakProvider>
+    ...
+}
+...
+// Scoped is prefered as it puts an automatic blocker for direct bad usage with singletons
+services.addProvider(p => p.provider);
+```
 
 ### ILifetime<T, E>
 - ``Singleton``, 1 to rule all

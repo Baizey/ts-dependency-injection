@@ -5,7 +5,7 @@ export class ExistenceDependencyError extends Error {
   readonly type: DependencyErrorType = DependencyErrorType.Existence;
 
   constructor(lifetime: string) {
-    super(`'${lifetime}' has not been added to dependency container, but it was supposed to, wasn't it?`);
+    super(`'${lifetime}' has not been added to dependency collection, but it was supposed to, wasn't it?`);
     this.lifetime = lifetime;
   }
 }

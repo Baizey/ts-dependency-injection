@@ -1,5 +1,5 @@
 import { DependencyConstructor, Factory, NameSelector } from '../types';
-import { ILifetime } from '../Lifetime';
+import { ILifetime } from '../Lifetime/ILifetime';
 
 export type LifetimeConstructor<T, E> = new (name: string, factoryFunction: Factory<T, E>) => ILifetime<T, E>;
 

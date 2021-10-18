@@ -1,10 +1,15 @@
-import { ILifetime, Scoped, Singleton, Transient } from '../Lifetime';
 import { DependencyOptions, LifetimeConstructor, ProviderConstructor } from './types';
-import { DuplicateDependencyError, MultiDependencyError, UnknownDependencyError } from '../Errors';
-import { DependencyConstructor, Factory, NameSelector, ProviderScope, ProviderValidation } from '../types';
-import { InternalServiceProvider, ServiceProvider } from '../ServiceProvider';
+import { DependencyConstructor, Factory, NameSelector, ProviderFactory, ProviderScope } from '../types';
 import { properties } from '../utils';
 import { IServiceCollection } from './IServiceCollection';
+import { ILifetime } from '../Lifetime/ILifetime';
+import { DuplicateDependencyError } from '../Errors/DuplicateDependencyError';
+import { UnknownDependencyError } from '../Errors/UnknownDependencyError';
+import { MultiDependencyError } from '../Errors/MultiDependencyError';
+import { Singleton } from '../Lifetime/Singleton';
+import { Scoped } from '../Lifetime/Scoped';
+import { Transient } from '../Lifetime/Transient';
+import { InternalServiceProvider, ServiceProvider } from '../ServiceProvider';
 
 export class ServiceCollection<E> implements IServiceCollection<E> {
   readonly template: Required<E>;
@@ -55,20 +60,20 @@ export class ServiceCollection<E> implements IServiceCollection<E> {
     return true;
   }
 
-  build(validate: boolean = true): ServiceProvider<E> {
-    const createContext = (validation: ProviderValidation, context: ProviderScope): ServiceProvider<E> => {
-      const provider = new InternalServiceProvider<E>(this, createContext, validation, context);
+  build(): ServiceProvider<E> {
+    const createContext: ProviderFactory<E> = (context?: ProviderScope): ServiceProvider<E> => {
+      const provider = new InternalServiceProvider<E>(this, createContext, { trail: {} }, context as unknown as {});
       Object.keys(this.template).forEach((name) => {
         Object.defineProperty(provider, name, { get: () => provider.getService(name) });
       });
       return provider as ServiceProvider<E>;
     };
 
-    return createContext({ validate: validate, trail: {} }, null as unknown as {});
+    return createContext();
   }
 
   validate(): void {
-    const serviceProvider = this.build(true);
+    const serviceProvider = this.build();
     const keys = Object.keys(this.template);
     const unresolved: Error[] = [];
 
@@ -88,7 +93,7 @@ export class ServiceCollection<E> implements IServiceCollection<E> {
   resolveProperty<T>(item?: NameSelector<T, E>, dependency?: DependencyConstructor<T, E>): string {
     if (item) return typeof item === 'string' ? item : item(properties(this.template));
     if (dependency) return this.dependencyToProvider[dependency.name.toLowerCase()];
-    return '';
+    throw new UnknownDependencyError('<missing arguments>');
   }
 
   private resolvePropertyConstructor<T>(
@@ -103,6 +108,13 @@ export class ServiceCollection<E> implements IServiceCollection<E> {
       const { selector, factory } = options;
       return [this.resolveProperty(selector), factory, undefined];
     }
+  }
+
+  /**
+   * @param options defaults to 'provider'
+   */
+  addProvider(options: NameSelector<ServiceProvider<E>, E> = 'provider') {
+    this.addScoped({ factory: (p) => p.createScoped(), selector: options });
   }
 
   addSingleton<T>(options: DependencyOptions<T, E>): void {

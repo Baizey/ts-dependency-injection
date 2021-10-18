@@ -1,7 +1,7 @@
 import { Factory } from '../types';
 import { ILifetime } from './ILifetime';
-import { CircularDependencyError } from '../Errors';
 import { ServiceProvider } from '../ServiceProvider';
+import { CircularDependencyError } from '../Errors/CircularDependencyError';
 
 export class Transient<T, E> implements ILifetime<T, E> {
   readonly name: string;
@@ -15,17 +15,22 @@ export class Transient<T, E> implements ILifetime<T, E> {
   provide(provider: ServiceProvider<E>) {
     const {
       _: {
-        validation: { validate, trail, lastSingleton },
-        create,
-        scope,
+        validation: { trail },
       },
     } = provider;
 
-    if (validate) {
-      if (trail[this.name]) throw new CircularDependencyError(this.name, this.name);
-      provider = create({ validate, lastSingleton, trail: { ...trail, [this.name]: true } }, scope);
-    }
+    // Handle errors
+    if (trail[this.name]) throw new CircularDependencyError(this.name, this.name);
 
-    return this.factory(provider);
+    // Pre-calling factory
+    trail[this.name] = true;
+
+    // Calling factory
+    const value = this.factory(provider);
+
+    // Post-calling factory
+    delete trail[this.name];
+
+    return value;
   }
 }

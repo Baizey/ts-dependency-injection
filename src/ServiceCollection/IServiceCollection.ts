@@ -1,6 +1,6 @@
 import { DependencyOptions, LifetimeConstructor } from './types';
 import { DependencyConstructor, NameSelector } from '../types';
-import { ILifetime } from '../Lifetime';
+import { ILifetime } from '../Lifetime/ILifetime';
 import { ServiceProvider } from '../ServiceProvider';
 
 export interface IServiceCollection<E> {
@@ -16,7 +16,7 @@ export interface IServiceCollection<E> {
 
   remove<T>(item: NameSelector<T, E>): boolean;
 
-  build(validate?: boolean): ServiceProvider<E>;
+  build(): ServiceProvider<E>;
 
   validate(): void;
 

@@ -1,7 +1,8 @@
 import { Factory } from '../types';
 import { ILifetime } from './ILifetime';
-import { CircularDependencyError, SingletonScopedDependencyError } from '../Errors';
 import { ServiceProvider } from '../ServiceProvider';
+import { SingletonScopedDependencyError } from '../Errors/SingletonScopedDependencyError';
+import { CircularDependencyError } from '../Errors/CircularDependencyError';
 
 export class Scoped<T, E> implements ILifetime<T, E> {
   readonly name: string;
@@ -15,20 +16,27 @@ export class Scoped<T, E> implements ILifetime<T, E> {
   provide(provider: ServiceProvider<E>) {
     const {
       _: {
-        validation: { validate, lastSingleton, trail },
-        create,
+        validation: { trail, lastSingleton },
         scope,
       },
     } = provider;
 
+    // If already provided, simply  return old instance
     if (scope[this.name]) return scope[this.name];
 
-    if (validate) {
-      if (trail[this.name]) throw new CircularDependencyError(this.name, this.name);
-      if (lastSingleton) throw new SingletonScopedDependencyError(lastSingleton, this.name);
-      provider = create({ validate, lastSingleton, trail: { ...trail, [this.name]: true } }, scope);
-    }
+    // Handle errors
+    if (lastSingleton) throw new SingletonScopedDependencyError(lastSingleton, this.name);
+    if (trail[this.name]) throw new CircularDependencyError(this.name, this.name);
 
-    return (scope[this.name] = this.factory(provider));
+    // Pre-calling factory
+    trail[this.name] = true;
+
+    // Calling factory
+    const value = this.factory(provider);
+
+    // Post-calling factory
+    delete trail[this.name];
+
+    return (scope[this.name] = value);
   }
 }

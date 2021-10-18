@@ -1,7 +1,7 @@
 import { Factory } from '../types';
 import { ILifetime } from './ILifetime';
-import { CircularDependencyError } from '../Errors';
 import { ServiceProvider } from '../ServiceProvider';
+import { CircularDependencyError } from '../Errors/CircularDependencyError';
 
 export class Singleton<T, E> implements ILifetime<T, E> {
   readonly name: string;
@@ -14,21 +14,28 @@ export class Singleton<T, E> implements ILifetime<T, E> {
   }
 
   provide(provider: ServiceProvider<E>) {
+    // If already provided, simply  return old instance
     if (this.value) return this.value;
 
     const {
-      _: {
-        validation: { validate, trail },
-        create,
-        scope,
-      },
+      _: { validation },
     } = provider;
 
-    if (validate) {
-      if (trail[this.name]) throw new CircularDependencyError(this.name, this.name);
-      provider = create({ validate, lastSingleton: this.name, trail: { ...trail, [this.name]: true } }, scope);
-    }
+    // Handle errors
+    if (validation.trail[this.name]) throw new CircularDependencyError(this.name, this.name);
 
-    return (this.value = this.factory(provider));
+    // Pre-calling factory
+    const old = validation.lastSingleton;
+    validation.lastSingleton = this.name;
+    validation.trail[this.name] = true;
+
+    // Calling factory
+    const value = this.factory(provider);
+
+    // Post calling factory
+    validation.lastSingleton = old;
+    delete validation.trail[this.name];
+
+    return (this.value = value);
   }
 }

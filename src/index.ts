@@ -1,4 +1,7 @@
-﻿export { IServiceCollection, ServiceCollection } from './ServiceCollection';
-export { IServiceProvider, ServiceProvider } from './ServiceProvider';
-export { Transient, Singleton, Scoped } from './Lifetime';
-export { DependencyErrorType, ErrorTypes } from './Errors';
+﻿export { IServiceCollection } from './ServiceCollection/IServiceCollection';
+export { ServiceCollection } from './ServiceCollection/ServiceCollection';
+export { ServiceProvider } from './ServiceProvider';
+export { Singleton } from './Lifetime/Singleton';
+export { Scoped } from './Lifetime/Scoped';
+export { Transient } from './Lifetime/Transient';
+export { DependencyErrorType, ErrorTypes } from './Errors/types';

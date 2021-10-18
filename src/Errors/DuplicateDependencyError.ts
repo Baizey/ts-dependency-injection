@@ -6,7 +6,7 @@ export class DuplicateDependencyError extends Error {
 
   constructor(lifetime: string) {
     super(
-      `'${lifetime}' has already been added to dependency container, use tryAdd if you might be adding it in multiple places`,
+      `'${lifetime}' has already been added to dependency collection, use tryAdd if you might be adding it in multiple places`,
     );
     this.lifetime = lifetime;
   }
