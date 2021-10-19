@@ -18,20 +18,22 @@ class Provider {
     alice: Alice = null as unknown as Alice;
     b: IBob = null as unknown as IBob;
     c: string = null as unknown as string;
+    provider?: ServiceProvider<Provider>;
 }
 class Alice {
     constructor({ c }: Provider){
     }
 }
 class Bob implements IBob {
-    constructor({ alice }: Provider){
+    constructor({ alice, provider }: Provider){
     }
 }
 
 const services = new ServiceCollection(Provider);
 services.addSingleton(Alice);
 services.addScoped({dependency: Bob, selector: p => p.b})
-services.addTransient({factory: 'hello world', selector: p => p.c})
+services.addTransient({factory: () => 'hello world', selector: p => p.c})
+services.addProvider();
 
 services.validate();
 
@@ -68,9 +70,9 @@ class Alice{
 }
 ```
 
-## API
+# API
 
-### Type references throughout
+## Type references throughout
 ```
 Generics used throughout:
 T is always the type being provided by a lifetime
@@ -108,71 +110,68 @@ NameSelector<T, E>:
     | ({k in keyof E which value extends T}) => keyof E
 ```
 
-### ServiceCollection<E>
+## ServiceCollection<E>
 
-#### Constructor
+### Constructor
 - `new<E>(template: E)`
 
-#### Add
-- `add<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>)`
-- `addSingleton<T>(DependencyOptions<T, E>)`
-- `addScoped<T>(DependencyOptions<T, E>)`
-- `addTransient<T>(DependencyOptions<T, E>)`
-- `addProvider(NameSelector<T, E>?)`
+### Add
+`add<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>)`
 
 Returns `void`
-
-Note: addProvider is a short for 
-
-```
-services.addScoped<ServiceProvider<E>>({
-    factory: p => p.createScoped(), 
-    selector: NameSelector<T, E> || 'provider'
-})
-```
 
 Can throw
 - `UnknownDependencyError` if the resolved name from `DependencyOptions` does not match any property on `E`
 - `DuplicateDependencyError` if the resolved name from `DependencyOptions` has already been added
 
-#### TryAdd
-- `tryAdd<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>)`
-- `tryAddSingleton<T>(DependencyOptions<T, E>)`
-- `tryAddScoped<T>(DependencyOptions<T, E>)`
-- `tryAddTransient<T>(DependencyOptions<T, E>)`
+Alternatives:
+- `addSingleton<T>(DependencyOptions<T, E>)` alt for `add<T>(Singleton, DependencyOptions<T, E>)`
+- `addScoped<T>(DependencyOptions<T, E>)` alt for `add<T>(Scoped, DependencyOptions<T, E>)`
+- `addTransient<T>(DependencyOptions<T, E>)` alt for `add<T>(Transient, DependencyOptions<T, E>)`
+- `addProvider(s: NameSelector<T, E>?)` alt for `addScoped<T>({factory: p => p.createScoped(), selector: s ?? 'provider'})`
+
+### TryAdd
+`tryAdd<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>)`
 
 Returns `boolean`, true if added, false otherwise
 
 Can throw
 - `UnknownDependencyError` if the resolved name from `DependencyOptions` does not match any property on `E`
 
-#### Replace
-- `replace<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>)`
-- `replaceSingleton<T>(DependencyOptions<T, E>)`
-- `replaceScoped<T>(DependencyOptions<T, E>)`
-- `replaceTransient<T>(DependencyOptions<T, E>)`
+Alternatives:
+- `tryAddSingleton<T>(DependencyOptions<T, E>)` alt for `tryAdd<T>(Singleton, DependencyOptions<T, E>)`
+- `tryAddScoped<T>(DependencyOptions<T, E>)` alt for `tryAdd<T>(Scoped, DependencyOptions<T, E>)`
+- `tryAddTransient<T>(DependencyOptions<T, E>)` alt for `tryAdd<T>(Transient, DependencyOptions<T, E>)`
+
+### Replace
+`replace<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>)`
 
 Returns `void`
 
 Can throw
 - `UnknownDependencyError` if the resolved name from `DependencyOptions` does not match any property on `E`
 
-#### Get
+Alternatives:
+- `replaceSingleton<T>(DependencyOptions<T, E>)` alt for `replace<T>(Singleton, DependencyOptions<T, E>)`
+- `replaceScoped<T>(DependencyOptions<T, E>)` alt for `replace<T>(Scoped, DependencyOptions<T, E>)`
+- `replaceTransient<T>(DependencyOptions<T, E>)` alt for `replace<T>(Transient, DependencyOptions<T, E>)`
+
+### Get
 - `get<T>(NameSelector<T, E>)`
 
 returns `ILifetime<T, E> | undefined`
 
-#### Remove
+### Remove
 - `remove<T>(NameSelector<T, E>)`
 
-returns `boolean`, true if anything, false otherwise
+returns `boolean`, true if anything was removed, false otherwise
 
-#### Build
-- `build(validate: boolean = true)`
+### Build
+- `build()`
 
 returns `ServiceProvider<T, E>`
 
-#### Validate
+### Validate
 - `validate()`
 
 returns `void`
@@ -183,46 +182,26 @@ Can throw
 - `SingletonScopedDependencyError`, A ``singleton`` depending on a ``Scoped`` lifetime, this is not allowed as it traps the `Scoped` lifetime as a `Singleton`
 - `ExistanceDependencyError`, you forgot to provide for one of the properties of `E`
 
-### ServiceProvider<E>
+## ServiceProvider<E>
 
-#### GetService
+### GetService
 - `getService<T>(NameSelector<T, E>)`
 
 returns `T`
 
-#### createRootScoped
-- `createRootScoped()`
-
-Returns ``ServiceProvider<E>`` with a reset scope as-if you did ``services.build(...)`` again (will keep validation on/off from what you picked)
-
-Note: ``Singleton`` instances that has been / will be instantiated is still shared across all scopes
-
-#### createScoped
+### createScoped
 - `createScoped()`
 
 returns ``ServiceProvider<E>`` with a reset validation context.
 
-Warning: Never allow ``Singleton`` lifetimes to keep permanent hold of a provider.
+Note: look into ``services.addProvider()`` before manually using this
 
-Dummy example of the best way to add the provider to itself:
-
-```
-class WeakProvider {
-    ...
-    provider?: ServiceProvider<WeakProvider>
-    ...
-}
-...
-// Scoped is prefered as it puts an automatic blocker for direct bad usage with singletons
-services.addProvider(p => p.provider);
-```
-
-### ILifetime<T, E>
+## ILifetime<T, E>
 - ``Singleton``, 1 to rule all
 - ``Scoped``, 1 per request
 - ``Transient``, always a new one
 
-#### Provide
+### Provide
 - `provide(provider: ServiceProvider<T, E>)`
 
 returns ``T`` based on assigned lifetime
