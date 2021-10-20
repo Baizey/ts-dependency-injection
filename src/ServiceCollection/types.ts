@@ -3,7 +3,7 @@ import { ILifetime } from '../Lifetime/ILifetime';
 
 export type LifetimeConstructor<T, E> = new (name: string, factoryFunction: Factory<T, E>) => ILifetime<T, E>;
 
-export type ProviderConstructor<E> = { prototype: E; name: string; new (): E };
+export type ProviderConstructor<E> = { prototype: E; name: string; new (): E } | { [key: string]: any };
 
 export type DependencyOptions<T, E> =
   | {

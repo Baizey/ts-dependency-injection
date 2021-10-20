@@ -17,7 +17,10 @@ export class ServiceCollection<E> implements IServiceCollection<E> {
   private readonly dependencyToProvider: Record<string, string>;
 
   constructor(ProviderTemplate: ProviderConstructor<E>) {
-    this.template = new ProviderTemplate() as Required<E>;
+    this.template =
+      typeof ProviderTemplate === 'object'
+        ? (ProviderTemplate as Required<E>)
+        : (new ProviderTemplate() as Required<E>);
     this.dependencyToProvider = Object.keys(this.template).reduce((a, b) => {
       a[b.toLowerCase()] = b;
       return a;
