@@ -14,6 +14,10 @@ export class Alice {
   constructor() {
     this.id = Alice.nextId++;
   }
+
+  getName() {
+    return 'alice';
+  }
 }
 
 export class Bob {

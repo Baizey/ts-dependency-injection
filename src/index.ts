@@ -1,4 +1,6 @@
-﻿export { IServiceCollection } from './ServiceCollection/IServiceCollection';
+﻿export { ProviderMock } from './Mock/ProviderMock';
+
+export { IServiceCollection } from './ServiceCollection/IServiceCollection';
 export { ServiceCollection } from './ServiceCollection/ServiceCollection';
 export { ServiceProvider } from './ServiceProvider';
 export { Singleton } from './Lifetime/Singleton';

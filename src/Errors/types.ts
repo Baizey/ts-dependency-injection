@@ -5,6 +5,7 @@ export enum DependencyErrorType {
   Duplicate,
   Unknown,
   MultiError,
+  ShouldBeMocked,
 }
 
 export type ErrorTypes =

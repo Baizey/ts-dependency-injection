@@ -5,7 +5,7 @@ import { CircularDependencyError } from '../Errors/CircularDependencyError';
 
 export class Singleton<T, E> implements ILifetime<T, E> {
   readonly name: string;
-  readonly factory: Factory<T, E>;
+  factory: Factory<T, E>;
   private value?: T;
 
   constructor(name: string, factory: Factory<T, E>) {

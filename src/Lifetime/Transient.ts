@@ -5,7 +5,7 @@ import { CircularDependencyError } from '../Errors/CircularDependencyError';
 
 export class Transient<T, E> implements ILifetime<T, E> {
   readonly name: string;
-  readonly factory: Factory<T, E>;
+  factory: Factory<T, E>;
 
   constructor(name: string, factory: Factory<T, E>) {
     this.name = name;
