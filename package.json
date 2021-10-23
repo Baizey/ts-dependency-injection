@@ -1,6 +1,6 @@
 {
   "name": "sharp-dependency-injection",
-  "version": "4.3.2",
+  "version": "4.4.0",
   "description": "A simple typescript dependency injection",
   "repository": {
     "type": "git",
