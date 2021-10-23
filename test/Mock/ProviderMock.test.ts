@@ -1,25 +1,29 @@
 import { ProviderMock, ServiceCollection } from '../../src';
-import { Alice, BasicTypesProvider, Bob, Dummy, Provider, ScopedA, ScopedB, ScopedC, ScopedProvider } from '../models';
+import { Alice, Bob, Dummy, Provider } from '../models';
 import { ShouldBeMockedDependencyError } from '../../src/Errors/ShouldBeMockedDependencyError';
 
 describe('mock', () => {
-  test('mock alice when being provided to bob', () => {
+  test('Mock override function', () => {
     const services = new ServiceCollection(Provider);
     services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
     services.addTransient({ dependency: Bob, selector: (p) => p.boB });
     services.addTransient({ dependency: Dummy, selector: (p) => p.totalWhackYo });
     const provider = services.build();
 
+    let spy;
     ProviderMock.mock(provider, {
-      alicE: (mock) => jest.spyOn(mock, 'getName').mockReturnValue('Bob'),
+      alicE: function (mock) {
+        spy = jest.spyOn(mock, 'getName').mockReturnValue('Bob');
+      },
     });
 
     const { a } = provider.boB;
 
     expect(a.getName()).toBe('Bob');
+    expect(spy).toBeCalledTimes(1);
   });
 
-  test('dont mock alice when being provided to bob and get error', () => {
+  test('Forget mock override function, throw error', () => {
     const services = new ServiceCollection(Provider);
     services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
     services.addTransient({ dependency: Bob, selector: (p) => p.boB });
@@ -30,34 +34,76 @@ describe('mock', () => {
 
     const { a } = provider.boB;
 
-    expect(() => a.getName()).toThrowError(new ShouldBeMockedDependencyError('alicE', 'getName'));
+    expect(() => a.getName()).toThrowError(new ShouldBeMockedDependencyError('alicE', 'getName', 'function'));
   });
 
-  test('dont mock alice when being provided to bob and get error', () => {
-    const services = new ServiceCollection(BasicTypesProvider);
-    services.addTransient({ factory: () => '', selector: (p) => p.a });
-    services.addTransient({ factory: () => [1], selector: (p) => p.b });
-    services.addTransient({ factory: () => [{ a: 1 }], selector: (p) => p.c });
+  test('Mock override get, throw error', () => {
+    const services = new ServiceCollection(Provider);
+    services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
+    services.addTransient({ dependency: Bob, selector: (p) => p.boB });
+    services.addTransient({ dependency: Dummy, selector: (p) => p.totalWhackYo });
+    const provider = services.build();
+
+    let spy;
+    ProviderMock.mock(provider, {
+      alicE: function (mock) {
+        spy = jest.spyOn(mock, 'getTest', 'get').mockReturnValue(undefined);
+      },
+    });
+
+    const { a } = provider.boB;
+
+    expect(a.getTest).toBeUndefined();
+    expect(spy).toBeCalledTimes(1);
+  });
+
+  test('Forget mock override get, throw error', () => {
+    const services = new ServiceCollection(Provider);
+    services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
+    services.addTransient({ dependency: Bob, selector: (p) => p.boB });
+    services.addTransient({ dependency: Dummy, selector: (p) => p.totalWhackYo });
     const provider = services.build();
 
     ProviderMock.mock(provider);
 
-    const { a, b, c } = provider;
+    const { a } = provider.boB;
 
-    expect(true).toBeTruthy();
+    expect(() => a.getTest).toThrowError(new ShouldBeMockedDependencyError('alicE', 'getTest', 'get'));
   });
 
-  test('Deep mocking', () => {
-    const services = new ServiceCollection(ScopedProvider);
-    services.addTransient({ dependency: ScopedA, selector: (p) => p.a });
-    services.addTransient({ dependency: ScopedB, selector: (p) => p.b });
-    services.addTransient({ dependency: ScopedC, selector: (p) => p.c });
+  test('Mock override set, throw error', () => {
+    const services = new ServiceCollection(Provider);
+    services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
+    services.addTransient({ dependency: Bob, selector: (p) => p.boB });
+    services.addTransient({ dependency: Dummy, selector: (p) => p.totalWhackYo });
+    const provider = services.build();
+
+    let spy;
+    ProviderMock.mock(provider, {
+      alicE: function (mock) {
+        spy = jest.spyOn(mock, 'setTest', 'set').mockReturnValue(undefined);
+      },
+    });
+
+    const { a } = provider.boB;
+
+    a.setTest = undefined;
+    expect(spy).toBeCalledTimes(1);
+  });
+
+  test('Forget mock override set, throw error', () => {
+    const services = new ServiceCollection(Provider);
+    services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
+    services.addTransient({ dependency: Bob, selector: (p) => p.boB });
+    services.addTransient({ dependency: Dummy, selector: (p) => p.totalWhackYo });
     const provider = services.build();
 
     ProviderMock.mock(provider);
 
-    const { a, b, c } = provider;
+    const { a } = provider.boB;
 
-    expect(true).toBeTruthy();
+    expect(() => {
+      a.setTest = undefined;
+    }).toThrowError(new ShouldBeMockedDependencyError('alicE', 'setTest', 'set'));
   });
 });

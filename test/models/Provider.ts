@@ -15,6 +15,12 @@ export class Alice {
     this.id = Alice.nextId++;
   }
 
+  get getTest() {
+    return undefined;
+  }
+
+  set setTest(value: any) {}
+
   getName() {
     return 'alice';
   }

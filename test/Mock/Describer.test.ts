@@ -131,13 +131,19 @@ class A {
 
   constructor() {}
 
+  set ay(v: any) {}
+
+  get ay() {
+    return undefined;
+  }
+
   callA() {}
 }
 
 test('Class', () => {
   const obj = new A();
   const result = Describer.describe(obj);
-  expect(result.sort()).toEqual(['constructor', 'a', 'callA'].sort());
+  expect(result.sort()).toEqual(['constructor', 'a', 'callA', 'ay'].sort());
 });
 
 class B extends A {
@@ -153,7 +159,7 @@ class B extends A {
 test('Class inheriting once', () => {
   const obj = new B();
   const result = Describer.describe(obj);
-  expect(result.sort()).toEqual(['constructor', 'a', 'callA', 'b', 'callB'].sort());
+  expect(result.sort()).toEqual(['constructor', 'a', 'callA', 'b', 'callB', 'ay'].sort());
 });
 
 class C extends B {
@@ -169,5 +175,5 @@ class C extends B {
 test('Class inheriting twice', () => {
   const obj = new C();
   const result = Describer.describe(obj);
-  expect(result.sort()).toEqual(['constructor', 'a', 'callA', 'b', 'callB', 'c', 'callC'].sort());
+  expect(result.sort()).toEqual(['constructor', 'a', 'callA', 'b', 'callB', 'c', 'callC', 'ay'].sort());
 });

@@ -50,17 +50,37 @@ export const ProviderMock = {
             const value = originalFactory(provider) as E[keyof E];
             let keys = Describer.describe(value);
             keys.forEach((k) => {
+              if (
+                // @ts-ignore
+                (value.__lookupGetter__ && value.__defineGetter__ && value.__lookupGetter__(k)) ||
+                // @ts-ignore
+                (value.__lookupSetter__ && value.__defineSetter__ && value.__lookupSetter__(k))
+              ) {
+                // @ts-ignore
+                if (value.__lookupGetter__ && value.__defineGetter__ && value.__lookupGetter__(k)) {
+                  // @ts-ignore
+                  value.__defineGetter__(k, () => {
+                    throw new ShouldBeMockedDependencyError(lifetime.name, k, 'get');
+                  });
+                }
+
+                // @ts-ignore
+                if (value.__lookupSetter__ && value.__defineSetter__ && value.__lookupSetter__(k)) {
+                  // @ts-ignore
+                  value.__defineSetter__(k, () => {
+                    throw new ShouldBeMockedDependencyError(lifetime.name, k, 'set');
+                  });
+                }
+                return;
+              }
+
               // @ts-ignore
-              switch (typeof value[k]) {
-                case 'function':
-                  // @ts-ignore
-                  value[k] = () => {
-                    throw new ShouldBeMockedDependencyError(lifetime.name, k);
-                  };
-                  break;
-                default:
-                  // @ts-ignore
-                  value[k] = undefined;
+              if (typeof value[k] === 'function') {
+                // @ts-ignore
+                value[k] = () => {
+                  throw new ShouldBeMockedDependencyError(lifetime.name, k, 'function');
+                };
+                return;
               }
             });
 
