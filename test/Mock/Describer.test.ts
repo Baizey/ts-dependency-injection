@@ -1,3 +1,5 @@
+// noinspection JSUnusedLocalSymbols
+
 import { Describer } from '../../src/Mock/ProviderMock';
 
 test('Null', () => {
