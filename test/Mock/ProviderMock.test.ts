@@ -1,109 +1,100 @@
-import { ProviderMock, ServiceCollection } from '../../src';
+import { ServiceCollection, ShouldBeMockedDependencyError } from '../../src';
 import { Alice, Bob, Dummy, Provider } from '../models';
-import { ShouldBeMockedDependencyError } from '../../src/Errors/ShouldBeMockedDependencyError';
+import { MockSetup } from '../../src/ServiceCollection/ServiceCollection';
+
+function setup(mock?: MockSetup<Provider>) {
+  const services = new ServiceCollection<Provider>();
+  services.addTransient(Alice, (p) => p.alice);
+  services.addTransient(Bob, (p) => p.bob);
+  services.addTransient(Dummy, (p) => p.dummy);
+  return services.buildMock(mock);
+}
 
 describe('mock', () => {
-  test('Mock override function', () => {
-    const services = new ServiceCollection(Provider);
-    services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
-    services.addTransient({ dependency: Bob, selector: (p) => p.boB });
-    services.addTransient({ dependency: Dummy, selector: (p) => p.totalWhackYo });
-    const provider = services.build();
+  test('Root provided is normal', () => {
+    const mock = {};
+    const provider = setup({ alice: mock });
 
-    let spy;
-    ProviderMock.mock(provider, {
-      alicE: function (mock) {
-        spy = jest.spyOn(mock, 'getName').mockReturnValue('Bob');
+    const { alice, bob } = provider.proxy;
+
+    expect(alice).toBeInstanceOf(Alice);
+    expect(bob).toBeInstanceOf(Bob);
+  });
+
+  test('Mock function, succeed', () => {
+    const mock = {
+      getName(): string {
+        return 'NotAlice';
       },
-    });
+    };
+    const spy = jest.spyOn(mock, 'getName');
 
-    const { a } = provider.boB;
+    const provider = setup({ alice: mock });
 
-    expect(a.getName()).toBe('Bob');
+    const { bob } = provider.proxy;
+
+    const alice = bob.alice;
+    expect(alice.getName()).toBe('NotAlice');
     expect(spy).toBeCalledTimes(1);
   });
 
-  test('Forget mock override function, throw error', () => {
-    const services = new ServiceCollection(Provider);
-    services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
-    services.addTransient({ dependency: Bob, selector: (p) => p.boB });
-    services.addTransient({ dependency: Dummy, selector: (p) => p.totalWhackYo });
-    const provider = services.build();
+  test('Forget mock function, throw error', () => {
+    const provider = setup();
 
-    ProviderMock.mock(provider);
+    const { bob } = provider.proxy;
 
-    const { a } = provider.boB;
+    const alice = bob.alice;
 
-    expect(() => a.getName()).toThrowError(new ShouldBeMockedDependencyError('alicE', 'getName', 'function'));
+    expect(() => alice.getName()).toThrowError(new ShouldBeMockedDependencyError('alice', 'getName', 'get'));
   });
 
-  test('Mock override get, throw error', () => {
-    const services = new ServiceCollection(Provider);
-    services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
-    services.addTransient({ dependency: Bob, selector: (p) => p.boB });
-    services.addTransient({ dependency: Dummy, selector: (p) => p.totalWhackYo });
-    const provider = services.build();
-
-    let spy;
-    ProviderMock.mock(provider, {
-      alicE: function (mock) {
-        spy = jest.spyOn(mock, 'getTest', 'get').mockReturnValue(undefined);
+  test('Mock get, succeed', () => {
+    const mock = {
+      get getTest() {
+        return undefined;
       },
-    });
+    };
+    const spy = jest.spyOn(mock, 'getTest', 'get');
 
-    const { a } = provider.boB;
+    const provider = setup({ alice: mock });
 
-    expect(a.getTest).toBeUndefined();
+    const { bob } = provider.proxy;
+
+    const alice = bob.alice;
+    expect(alice.getTest).toBeUndefined();
     expect(spy).toBeCalledTimes(1);
   });
 
-  test('Forget mock override get, throw error', () => {
-    const services = new ServiceCollection(Provider);
-    services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
-    services.addTransient({ dependency: Bob, selector: (p) => p.boB });
-    services.addTransient({ dependency: Dummy, selector: (p) => p.totalWhackYo });
-    const provider = services.build();
+  test('Forget mock get, throw error', () => {
+    const provider = setup();
 
-    ProviderMock.mock(provider);
+    const { bob } = provider.proxy;
 
-    const { a } = provider.boB;
-
-    expect(() => a.getTest).toThrowError(new ShouldBeMockedDependencyError('alicE', 'getTest', 'get'));
+    const alice = bob.alice;
+    expect(() => alice.getTest).toThrowError(new ShouldBeMockedDependencyError('alice', 'getTest', 'get'));
   });
 
-  test('Mock override set, throw error', () => {
-    const services = new ServiceCollection(Provider);
-    services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
-    services.addTransient({ dependency: Bob, selector: (p) => p.boB });
-    services.addTransient({ dependency: Dummy, selector: (p) => p.totalWhackYo });
-    const provider = services.build();
+  test('Mock set, succeed setting', () => {
+    const mock = new Alice();
+    const spy = jest.spyOn(mock, 'setTest', 'set');
 
-    let spy;
-    ProviderMock.mock(provider, {
-      alicE: function (mock) {
-        spy = jest.spyOn(mock, 'setTest', 'set').mockReturnValue(undefined);
-      },
-    });
+    const provider = setup({ alice: mock });
 
-    const { a } = provider.boB;
+    const { bob } = provider.proxy;
 
-    a.setTest = undefined;
+    const alice = bob.alice;
+    alice.setTest = undefined;
     expect(spy).toBeCalledTimes(1);
   });
 
-  test('Forget mock override set, throw error', () => {
-    const services = new ServiceCollection(Provider);
-    services.addTransient({ dependency: Alice, selector: (p) => p.alicE });
-    services.addTransient({ dependency: Bob, selector: (p) => p.boB });
-    services.addTransient({ dependency: Dummy, selector: (p) => p.totalWhackYo });
-    const provider = services.build();
+  test('Forget mock set, throw error', () => {
+    const provider = setup();
 
-    ProviderMock.mock(provider);
+    const { bob } = provider.proxy;
 
-    const { a } = provider.boB;
-
+    const alice = bob.alice;
     expect(() => {
-      a.setTest = undefined;
-    }).toThrowError(new ShouldBeMockedDependencyError('alicE', 'setTest', 'set'));
+      alice.setTest = undefined;
+    }).toThrowError(new ShouldBeMockedDependencyError('alice', 'setTest', 'set'));
   });
 });

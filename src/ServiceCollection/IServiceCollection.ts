@@ -1,42 +1,52 @@
-import { DependencyOptions, LifetimeConstructor } from './types';
-import { DependencyConstructor, NameSelector } from '../types';
-import { ILifetime } from '../Lifetime/ILifetime';
-import { ServiceProvider } from '../ServiceProvider';
+import { ILifetime } from '../Lifetime';
+import { IServiceProvider } from '../ServiceProvider';
+
+export type Key<E> = keyof E & (string | symbol);
+
+export type WantedKeys<T, E> = { [K in keyof E]: E[K] extends T ? K : never }[keyof E];
+export type FunctionSelector<T, E> = { [key in WantedKeys<T, E>]: key & string };
+export type Selector<T, E> =
+  | (keyof E & (string | symbol))
+  | ((e: FunctionSelector<T, E>) => keyof E & string)
+  | {
+      name: keyof E & string;
+      prototype: T;
+    };
+
+export type Factory<T, E> = (provider: E) => T;
+export type DependencyConstructor<T, E> = { new (props: E): T } | { new (): T };
+export type DependencyOptions<T, E> = { factory: Factory<T, E> } | DependencyConstructor<T, E>;
+
+export type LifetimeConstructor<T, E> = new (name: Key<E>, factory: Factory<T, E>) => ILifetime<T, E>;
 
 export interface IServiceCollection<E> {
-  readonly template: Required<E>;
+  replaceSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  add<T>(Lifetime: LifetimeConstructor<T, E>, options: DependencyOptions<T, E>): void;
+  replaceTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  tryAdd<T>(Lifetime: LifetimeConstructor<T, E>, options: DependencyOptions<T, E>): boolean;
+  replaceScoped<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  get<T>(item: NameSelector<T, E>): ILifetime<T, E> | undefined;
+  replace<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  replace<T>(Lifetime: LifetimeConstructor<T, E>, options: DependencyOptions<T, E>): void;
+  tryAddSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  remove<T>(item: NameSelector<T, E>): boolean;
+  tryAddTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  build(): ServiceProvider<E>;
+  tryAddScoped<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  validate(): void;
+  tryAdd<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  resolveProperty<T>(item?: NameSelector<T, E>, dependency?: DependencyConstructor<T, E>): string;
+  addSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  addSingleton<T>(options: DependencyOptions<T, E>): void;
+  addTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  addScoped<T>(options: DependencyOptions<T, E>): void;
+  addScoped<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  addTransient<T>(options: DependencyOptions<T, E>): void;
+  add<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  tryAddSingleton<T>(options: DependencyOptions<T, E>): boolean;
+  get<T>(item: Selector<T, E>): ILifetime<T, E> | undefined;
 
-  tryAddScoped<T>(options: DependencyOptions<T, E>): boolean;
+  remove<T>(item: Selector<T, E>): ILifetime<T, E> | undefined;
 
-  tryAddTransient<T>(options: DependencyOptions<T, E>): boolean;
-
-  replaceSingleton<T>(options: DependencyOptions<T, E>): void;
-
-  replaceScoped<T>(options: DependencyOptions<T, E>): void;
-
-  replaceTransient<T>(options: DependencyOptions<T, E>): void;
+  build(): IServiceProvider<E>;
 }

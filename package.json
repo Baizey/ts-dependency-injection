@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/Baizey/ts-dependency-injection"
   },
-  "main": "src/index.ts",
+  "main": "lib/index.js",
   "files": [
     "lib/**/*"
   ],
@@ -15,19 +15,18 @@
     "test": "test"
   },
   "scripts": {
-    "build": "tsc",
-    "clean": "rmdir /Q/S \"lib\"",
+    "build": "tsc --build",
     "test": "jest --coverage"
   },
   "devDependencies": {
-    "@types/jest": "^27.0.2",
-    "eslint": "^8.0.1",
-    "eslint-config-prettier": "^8.3.0",
-    "jest": "^27.3.0",
-    "prettier": "^2.4.1",
-    "ts-jest": "^27.0.7",
-    "ts-node": "^10.3.0",
-    "typescript": "^4.4.4"
+    "@types/jest": "^27.4.1",
+    "eslint": "^8.13.0",
+    "eslint-config-prettier": "^8.5.0",
+    "jest": "^27.5.1",
+    "prettier": "^2.6.2",
+    "ts-jest": "^27.1.4",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.3"
   },
   "keywords": [
     "typescript",

@@ -1,42 +1,30 @@
-import { Factory } from '../types';
+import { Factory, Key } from '../ServiceCollection/IServiceCollection';
+import { SingletonScopedDependencyError } from '../Errors';
 import { ILifetime } from './ILifetime';
-import { ServiceProvider } from '../ServiceProvider';
-import { SingletonScopedDependencyError } from '../Errors/SingletonScopedDependencyError';
-import { CircularDependencyError } from '../Errors/CircularDependencyError';
+import { ScopedContext } from '../ServiceProvider/ScopedContext';
 
 export class Scoped<T, E> implements ILifetime<T, E> {
-  readonly name: string;
+  readonly name: Key<E>;
   factory: Factory<T, E>;
 
-  constructor(name: string, factory: Factory<T, E>) {
+  constructor(name: Key<E>, factory: Factory<T, E>) {
     this.name = name;
     this.factory = factory;
   }
 
-  provide(provider: ServiceProvider<E>) {
+  provide(provider: ScopedContext<E>) {
     const {
-      _: {
-        validation: { trail, lastSingleton },
-        scope,
-      },
+      validation: { lastSingleton },
+      scope,
     } = provider;
-
-    // If already provided, simply  return old instance
-    if (scope[this.name]) return scope[this.name];
-
-    // Handle errors
     if (lastSingleton) throw new SingletonScopedDependencyError(lastSingleton, this.name);
-    if (trail[this.name]) throw new CircularDependencyError(this.name, this.name);
 
-    // Pre-calling factory
-    trail[this.name] = true;
-
-    // Calling factory
-    const value = this.factory(provider);
-
-    // Post-calling factory
-    delete trail[this.name];
+    const value = scope[this.name] ?? this.factory(provider.proxy);
 
     return (scope[this.name] = value);
+  }
+
+  clone(): ILifetime<T, E> {
+    return new Scoped(this.name, this.factory);
   }
 }

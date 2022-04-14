@@ -1,5 +1,3 @@
-import { Provider } from './Provider';
-
 export class ScopedA {
   private static nextId: number = 0;
   readonly aId: number;
@@ -14,7 +12,7 @@ export class ScopedB {
   readonly bId: number;
   readonly a: ScopedA;
 
-  constructor({ a }: P) {
+  constructor({ a }: ScopedProvider) {
     this.a = a;
     this.bId = ScopedB.nextId++;
   }
@@ -26,17 +24,15 @@ export class ScopedC {
   readonly a: ScopedA;
   readonly b: ScopedB;
 
-  constructor({ b, a }: P) {
+  constructor({ b, a }: ScopedProvider) {
     this.a = a;
     this.b = b;
     this.cId = ScopedC.nextId++;
   }
 }
 
-export class ScopedProvider {
-  a?: ScopedA;
-  b?: ScopedB;
-  c?: ScopedC;
+export interface ScopedProvider {
+  a: ScopedA;
+  b: ScopedB;
+  c: ScopedC;
 }
-
-type P = Required<ScopedProvider>;
