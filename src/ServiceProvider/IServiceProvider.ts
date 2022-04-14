@@ -1,11 +1,5 @@
-import { Key, Selector } from '../ServiceCollection/IServiceCollection';
+import { Selector } from '../ServiceCollection';
 import { RecordCollection } from '../ServiceCollection/ServiceCollection';
-
-export type ProviderValidation = {
-  lastSingleton?: Key<any>;
-  trail: Record<Key<any>, boolean>;
-};
-export type ProviderScope = Record<Key<any>, any>;
 
 export interface IServiceProvider<E> {
   readonly proxy: E;

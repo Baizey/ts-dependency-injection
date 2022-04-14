@@ -20,6 +20,22 @@ export type DependencyOptions<T, E> = { factory: Factory<T, E> } | DependencyCon
 export type LifetimeConstructor<T, E> = new (name: Key<E>, factory: Factory<T, E>) => ILifetime<T, E>;
 
 export interface IServiceCollection<E> {
+  replaceSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
+
+  replaceTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
+
+  replaceScoped<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
+
+  replace<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>): void;
+
+  tryAddSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
+
+  tryAddTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
+
+  tryAddScoped<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
+
+  tryAdd<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>): void;
+
   addSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
   addTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;

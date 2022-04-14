@@ -1,5 +1,5 @@
-export class BasicTypesProvider {
-  a?: string;
-  b?: number[];
-  c?: { a: number }[];
-}
+export type BasicTypesProvider = {
+  a: string;
+  b: number[];
+  c: { a: number }[];
+};

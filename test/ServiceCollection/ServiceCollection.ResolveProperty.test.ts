@@ -1,9 +1,8 @@
-import { ServiceCollection } from '../../src';
+import { ExistenceDependencyError, ServiceCollection } from '../../src';
 import { Provider } from '../models';
-import { UnknownDependencyError } from '../../src/Errors/UnknownDependencyError';
 
 test('Forgetting property', () => {
-  const services = new ServiceCollection(Provider);
+  const services = new ServiceCollection<Provider>().build();
 
-  expect(() => services.resolveProperty()).toThrowError(new UnknownDependencyError('<missing arguments>'));
+  expect(() => services.proxy.alice).toThrowError(new ExistenceDependencyError('alice'));
 });

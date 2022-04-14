@@ -30,7 +30,7 @@ class Bob implements IBob {
     }
 }
 
-const services = new ServiceCollection(Provider);
+const services = new ServiceCollection<Provider>();
 services.addSingleton(Alice);
 services.addScoped({dependency: Bob, selector: p => p.b})
 services.addTransient({factory: () => 'hello world', selector: p => p.c})
@@ -69,7 +69,7 @@ class WeakProvider {
 // Use this everywhere else
 type Provider = Required<WeakProvider>;
 // Fx
-const services = new ServiceCollection(WeakProvider);
+const services = new ServiceCollection<WeakProvider>();
 class Alice{
     constructor(p: Provider){}
 }
@@ -255,7 +255,7 @@ You may want to use this if:
 Example usage:
 
 ```
-const services = new ServiceCollection(Provider);
+const services = new ServiceCollection<Provider>();
 ...
 const provider = services.build();
 
@@ -275,7 +275,7 @@ expect(spy).toBeCalledTimes(1);
 If you forget to mock a dependency's function:
 
 ```
-const services = new ServiceCollection(Provider);
+const services = new ServiceCollection<Provider>();
 ...
 const provider = services.build();
 

@@ -3,14 +3,16 @@ import { Key } from '../ServiceCollection/IServiceCollection';
 
 export class CircularDependencyError extends Error {
   readonly lifetime: string;
-  readonly cause: string;
   readonly type: DependencyErrorType = DependencyErrorType.Circular;
+  readonly layer: Key<any>[];
 
-  constructor(lifetime: Key<any>, cause: Key<any>) {
+  constructor(lifetime: Key<any>, layer: Key<any>[]) {
     super(
-      `'${lifetime.toString()}' and '${cause.toString()}' has circular dependency, two dependencies cannot depend on each other no matter how long the chain is between them`,
+      `'${lifetime.toString()}' has circular dependency in the chain: '${layer
+        .map((e) => e.toString())
+        .join(' > ')}'. Two dependencies cannot depend on each other no matter how long the chain is between them`,
     );
     this.lifetime = lifetime.toString();
-    this.cause = cause.toString();
+    this.layer = layer;
   }
 }

@@ -1,5 +1,5 @@
 import { ILifetime, Scoped, Singleton, Transient } from '../Lifetime';
-import { DuplicateDependencyError, ShouldBeMockedDependencyError } from '../Errors';
+import { DependencyErrorType, DuplicateDependencyError, ShouldBeMockedDependencyError } from '../Errors';
 import { IServiceProvider, ServiceProvider } from '../ServiceProvider';
 import {
   DependencyOptions,
@@ -12,10 +12,52 @@ import {
 } from './IServiceCollection';
 import { ScopedContext } from '../ServiceProvider/ScopedContext';
 
+export type MockSetup<E> = {
+  [key in keyof E]?: Partial<Required<E>[key]> | Factory<E[key], E>;
+};
+
 export type RecordCollection<E> = Record<Key<E>, ILifetime<unknown, E>>;
 
 export class ServiceCollection<E = any> implements IServiceCollection<E> {
   private readonly lifetimes: RecordCollection<E> = {} as RecordCollection<E>;
+
+  replaceSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
+    this.replace(Singleton, options, selector);
+  }
+
+  replaceTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
+    this.replace(Transient, options, selector);
+  }
+
+  replaceScoped<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
+    this.replace(Scoped, options, selector);
+  }
+
+  replace<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>) {
+    this.remove(selector);
+    this.add(Lifetime, dependency, selector);
+  }
+
+  tryAddSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
+    this.tryAdd(Singleton, options, selector);
+  }
+
+  tryAddTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
+    this.tryAdd(Transient, options, selector);
+  }
+
+  tryAddScoped<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
+    this.tryAdd(Scoped, options, selector);
+  }
+
+  tryAdd<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>) {
+    try {
+      this.add(Lifetime, dependency, selector);
+    } catch (e) {
+      const type = (e as DuplicateDependencyError).type;
+      if (type !== DependencyErrorType.Duplicate) throw e;
+    }
+  }
 
   addSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void {
     this.add(Singleton, options, selector);
@@ -73,9 +115,7 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
     return new ServiceProvider<E>(lifetimes);
   }
 
-  buildMock(mock?: {
-    [key in keyof E]?: (mockedValue: Required<E>[key], provider: IServiceProvider<E>) => void;
-  }): IServiceProvider<E> {
+  buildMock(mock?: MockSetup<E>): IServiceProvider<E> {
     const provider = this.build();
     Object.entries<ILifetime<unknown, E>>(provider.lifetimes)
       .map(([key, value]) => ({
@@ -83,11 +123,21 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
         lifetime: value,
       }))
       .forEach(({ name, lifetime }) => {
+        const mockSetup = mock && mock[name];
         const valueProxy = new Proxy(
           {},
           {
+            construct(target, prop) {
+              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), 'construct');
+            },
+            apply(target, prop) {
+              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), 'apply');
+            },
             get(target, prop) {
-              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), 'function');
+              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), 'get');
+            },
+            set(target, prop) {
+              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), 'set');
             },
           },
         ) as any;
@@ -96,12 +146,15 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
           get(target, prop: keyof ILifetime<unknown, E>) {
             if (prop !== 'provide') return target[prop];
             return (context: ScopedContext<E>) => {
-              const depth = Object.keys(context.validation.trail).length;
-              if (depth === 0) return target.provide(context);
-
-              const mockSetup = mock && mock[name];
-              if (mockSetup) mockSetup(valueProxy, context);
-              return valueProxy;
+              if (context.validation.trail.depth === 1) return target.provide(context);
+              switch (typeof mockSetup) {
+                case 'undefined':
+                  return valueProxy;
+                case 'function':
+                  return mockSetup(context.proxy);
+                default:
+                  return mockSetup;
+              }
             };
           },
         });
