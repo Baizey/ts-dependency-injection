@@ -1,14 +1,12 @@
-export class CircularProvider {
-  CircularA?: CircularA;
-  CircularB?: CircularB;
+export interface CircularProvider {
+  CircularA: CircularA;
+  CircularB: CircularB;
 }
-
-type P = Required<CircularProvider>;
 
 export class CircularA {
   CircularB: CircularB;
 
-  constructor({ CircularB }: P) {
+  constructor({ CircularB }: CircularProvider) {
     this.CircularB = CircularB;
   }
 }
@@ -16,7 +14,7 @@ export class CircularA {
 export class CircularB {
   CircularA: CircularA;
 
-  constructor({ CircularA }: P) {
+  constructor({ CircularA }: CircularProvider) {
     this.CircularA = CircularA;
   }
 }

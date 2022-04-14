@@ -2,27 +2,31 @@
 import { ServiceCollection, Singleton } from '../../src';
 import { Alice, Bob, Dummy, Provider } from '../models';
 
-test('Succeed with name selector', () => {
-  const services = new ServiceCollection(Provider);
+function setup() {
+  const services = new ServiceCollection<Provider>();
   const expectedAlice = new Alice();
-  services.add(Singleton, { factory: () => expectedAlice, selector: (p) => p.alicE });
-  services.add(Singleton, Bob);
-  services.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
-  const sut = services.build();
+  services.add(Singleton, { factory: () => expectedAlice }, (p) => p.alice);
+  services.add(Singleton, Bob, (p) => p.bob);
+  services.add(Singleton, Dummy, (provider) => provider.dummy);
+  return { sut: services.build(), expected: expectedAlice };
+}
 
-  const alice = sut.getService((p) => p.alicE);
-
-  expect(alice).toBe(expectedAlice);
+test('Succeed with name selector', () => {
+  const { sut, expected } = setup();
+  const alice = sut.provide((p) => p.alice);
+  expect(alice).toBe(expected);
 });
 test('Succeed with string', () => {
-  const services = new ServiceCollection(Provider);
-  const expectedAlice = new Alice();
-  services.add(Singleton, { factory: () => expectedAlice, selector: (p) => p.alicE });
-  services.add(Singleton, Bob);
-  services.add(Singleton, { dependency: Dummy, selector: (provider) => provider.totalWhackYo });
-  const sut = services.build();
+  const { sut, expected } = setup();
 
-  const alice = sut.getService('alicE');
+  const alice = sut.provide('alice');
 
-  expect(alice).toBe(expectedAlice);
+  expect(alice).toBe(expected);
+});
+test('Succeed with proxy', () => {
+  const { sut, expected } = setup();
+
+  const alice = sut.proxy.alice;
+
+  expect(alice).toBe(expected);
 });

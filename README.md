@@ -14,65 +14,42 @@ Simple type strong dependency injection
 ## Quick start
 
 ```
-// If you have useDefineForClassFields as true in tsconfig you can avoid the 'null as unknown as T'
-class Provider {
-    alice: Alice = null as unknown as Alice;
-    b: IBob = null as unknown as IBob;
-    c: string = null as unknown as string;
-    provider?: ServiceProvider<Provider>;
+// This interface can also be a concatenation of all the prop fields for each class
+// This 'global' type checker is optional and you can simply ignore it if desired
+interface Provider {
+    alice: Alice
+    b: IBob
+    c: string
 }
+
 class Alice {
-    constructor({ c }: Provider){
+    private readonly c: string;
+    constructor(props: Provider){
+      this.c = props.c;
     }
 }
 class Bob implements IBob {
-    constructor({ alice, provider }: Provider){
+    private readonly alice: Alice;
+    constructor({ alice }: Provider){
+      this.alice = alice;
     }
 }
 
-const services = new ServiceCollection(Provider);
-services.addSingleton(Alice);
-services.addScoped({dependency: Bob, selector: p => p.b})
-services.addTransient({factory: () => 'hello world', selector: p => p.c})
-services.addProvider();
+const services = new ServiceCollection<Provider>();
+// Add dependencies using the <Dependency>, <Selector> inputs
+// Dependencies is either the class, or a { factory: (provider) => ... } object
+// Selector is either a type-strong string match with ServiceCollection or  a function (p) => p.alice which is also typestrong
+services.addSingleton<Alice>(Alice, 'alice');
+services.addScoped<IBob>(Bob, p => p.b)
+services.addTransient<string>({factory: () => 'hello world'}, p => p.c)
 
-services.validate();
+const provider = services.build();
 
-const {alice, b, c} = services.build();
-```
-
-### useDefineForClassFields
-
-If you include this in your ``tsconfig.json``
-
-```
-{
-    ...
-    "compilerOptions": {
-        ...
-        "useDefineForClassFields": true
-        ...
-    },
-    ...
- }
-```
-
-You can create a provider as such:
-
-```
-// Use this only when creating the ServiceCollection
-class WeakProvider {
-    alice?: Alice;
-    b?: IBob;
-    c?: string;
-}
-// Use this everywhere else
-type Provider = Required<WeakProvider>;
-// Fx
-const services = new ServiceCollection(WeakProvider);
-class Alice{
-    constructor(p: Provider){}
-}
+// Get instances in one of several ways
+// They are equivilent and are all typestrong / refactor friendly
+const alice1 = provider.provide(p => p.alice)
+const alice2 = provider.provide('alice')
+const { alice, b, c } = provider.proxy
 ```
 
 # API
@@ -85,7 +62,7 @@ T is always the type being provided by a lifetime
 E is always your custom class dictating which dependencies the ServiceCollection will require to be added
 
 LifeTimeConstructor<T, E> =
-    | { new(name: string, factory: (p: ServiceProvider<E>) => ILifetime<T, E>) }
+    | { new(name: keyof E & (string | symbol), factory: (p: E) => T) }
     | Singleton 
     | Scoped 
     | Transient
@@ -93,27 +70,17 @@ LifeTimeConstructor<T, E> =
 DependencyOptions<T, E>: 
     // A class constructor, fx Date, can only be used if class name is the same as the property in E it will be provided from
     | DependencyConstructor<T, E> 
-    
     // A factory function and a selector, which is a type-strong helper to select a type-matching property in E
-    | { 
-        factory: (p: ServiceProvider<E>) => T,
-        selector: NameSelector<T, E>
-      }
-      
-    // A class constructor and selector, useful if the class name does not match the property in E it should be provided by
-    | { 
-        dependency: DependencyConstructor<T, E>,
-        selector: NameSelector<T, E>
-      } 
+    | { factory: (p: E) => T }
       
 // It is a requirement that any dependency either has a zero-parameter constructor or the first parameter taking in an instance of E
 DependencyConstructor<T, E>: 
     | { new(): T } 
     | { new(provider: E): T }
     
-NameSelector<T, E>: 
-    | string
-    | ({k in keyof E which value extends T}) => keyof E
+Selector<T, E>: 
+    | keyof E & (string | symbol)
+    | ({...[key in keyof E as E[key] extends T]}) => keyof E
 ```
 
 ## ServiceCollection<E>
@@ -124,102 +91,101 @@ NameSelector<T, E>:
 
 ### Add
 
-`add<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>)`
+`add<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>, Selector<T, E>)`
 
 Returns `void`
 
 Can throw
 
-- `UnknownDependencyError` if the resolved name from `DependencyOptions` does not match any property on `E`
 - `DuplicateDependencyError` if the resolved name from `DependencyOptions` has already been added
 
 Alternatives:
 
-- `addSingleton<T>(DependencyOptions<T, E>)` alt for `add<T>(Singleton, DependencyOptions<T, E>)`
-- `addScoped<T>(DependencyOptions<T, E>)` alt for `add<T>(Scoped, DependencyOptions<T, E>)`
-- `addTransient<T>(DependencyOptions<T, E>)` alt for `add<T>(Transient, DependencyOptions<T, E>)`
-- `addProvider(s: NameSelector<T, E>?)` alt
-  for `addScoped<T>({factory: p => p.createScoped(), selector: s ?? 'provider'})`
+- `addSingleton<T>(DependencyOptions<T, E>, Selector<T, E>)`
+- `addScoped<T>(DependencyOptions<T, E>, Selector<T, E>)`
+- `addTransient<T>(DependencyOptions<T, E>, Selector<T, E>)`
 
 ### TryAdd
 
-`tryAdd<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>)`
+`tryAdd<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>, Selector<T, E>)`
 
 Returns `boolean`, true if added, false otherwise
 
 Can throw
 
-- `UnknownDependencyError` if the resolved name from `DependencyOptions` does not match any property on `E`
+- Nothing
 
 Alternatives:
 
-- `tryAddSingleton<T>(DependencyOptions<T, E>)` alt for `tryAdd<T>(Singleton, DependencyOptions<T, E>)`
-- `tryAddScoped<T>(DependencyOptions<T, E>)` alt for `tryAdd<T>(Scoped, DependencyOptions<T, E>)`
-- `tryAddTransient<T>(DependencyOptions<T, E>)` alt for `tryAdd<T>(Transient, DependencyOptions<T, E>)`
+- `tryAddSingleton<T>(DependencyOptions<T, E>, Selector<T, E>)`
+- `tryAddScoped<T>(DependencyOptions<T, E>, Selector<T, E>)`
+- `tryAddTransient<T>(DependencyOptions<T, E>, Selector<T, E>)`
 
 ### Replace
 
-`replace<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>)`
+`replace<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>, Selector<T, E>)`
 
 Returns `void`
 
 Can throw
 
-- `UnknownDependencyError` if the resolved name from `DependencyOptions` does not match any property on `E`
+- Nothing
 
 Alternatives:
 
-- `replaceSingleton<T>(DependencyOptions<T, E>)` alt for `replace<T>(Singleton, DependencyOptions<T, E>)`
-- `replaceScoped<T>(DependencyOptions<T, E>)` alt for `replace<T>(Scoped, DependencyOptions<T, E>)`
-- `replaceTransient<T>(DependencyOptions<T, E>)` alt for `replace<T>(Transient, DependencyOptions<T, E>)`
+- `replaceSingleton<T>(DependencyOptions<T, E>, Selector<T, E>)`
+- `replaceScoped<T>(DependencyOptions<T, E>, Selector<T, E>)`
+- `replaceTransient<T>(DependencyOptions<T, E>, Selector<T, E>)`
 
 ### Get
 
-- `get<T>(NameSelector<T, E>)`
+- `get<T>(Selector<T, E>)`
 
 returns `ILifetime<T, E> | undefined`
 
 ### Remove
 
-- `remove<T>(NameSelector<T, E>)`
+- `remove<T>(Selector<T, E>)`
 
-returns `boolean`, true if anything was removed, false otherwise
+returns `ILifetime<T, E> | undefined`
 
 ### Build
 
 - `build()`
 
-returns `ServiceProvider<T, E>`
+returns `IServiceProvider<T, E>`
 
-### Validate
+### BuildMock
 
-- `validate()`
+This is only meant for testing, it will provide a IServiceProvider similar to `build()` except that any dependencies
+will be forcefully mocked
 
-returns `void`
+- `buildMock(setup?: { [key in keyof E]: Partial<E[key]> | Factory<T, E>})`
+
+returns `IServiceProvider<T, E>`
+
+## IServiceProvider<E>
+
+### Proxy
+
+- `proxy`
+
+returns `E`
+
+Note all properties on result acts as-if you used `provide<T>(...)` on the service provider itself
+
+### Provide
+
+- `provide<T>(Selector<T, E>)`
+
+returns `T`
 
 Can throw
 
-- `MultiDependencyError`, A summarized error for all other errors that might have been thrown
 - `CircularDependencyError`, two dependencies require each other to be resolved, resulting in a never ending resolving
 - `SingletonScopedDependencyError`, A ``singleton`` depending on a ``Scoped`` lifetime, this is not allowed as it traps
   the `Scoped` lifetime as a `Singleton`
 - `ExistanceDependencyError`, you forgot to provide for one of the properties of `E`
-
-## ServiceProvider<E>
-
-### GetService
-
-- `getService<T>(NameSelector<T, E>)`
-
-returns `T`
-
-### createScoped
-
-- `createScoped()`
-
-returns ``ServiceProvider<E>`` with a reset validation context.
-
-Note: look into ``services.addProvider()`` before manually using this
 
 ## ILifetime<T, E>
 
@@ -229,63 +195,14 @@ Note: look into ``services.addProvider()`` before manually using this
 
 ### Provide
 
-- `provide(provider: ServiceProvider<T, E>)`
+- `provide(provider: ScopedContext<T, E>)`
 
 returns ``T`` based on assigned lifetime
+
+Note: This is not meant to be used manually, but can be done via: `new ScopedContext(services.build().lifetimes)`
 
 Can throw
 
 - `CircularDependencyError`, two dependencies require each other to be resolved, resulting in a never ending resolving
 - `SingletonScopedDependencyError`, A ``singleton`` depending on a ``Scoped`` lifetime, this is not allowed as it traps
   the `Scoped` lifetime as a `Singleton`
-
-# Testing
-
-This npm package includes a simple way mocking all dependencies given it can provide.
-
-It takes inspiration from C# nugets such as AutoFixture and AutoMoq.
-
-``ProviderMock.mock(ServiceProvider<E>, options?: { [k keyof E]: (value: T, provider: ServiceProvider<E>) => void })``
-
-You may want to use this if:
-- You want to avoid writing code twice
-- You want to enforce single-component testing
-- You need to run tests which utilizes the lifetimes provided by the dependency injection
-
-Example usage:
-
-```
-const services = new ServiceCollection(Provider);
-...
-const provider = services.build();
-
-let spy;
-ProviderMock.mock(provider, {
-  dependency: (dependencyMock, provider) => {
-    spy = jest.spyOn(mock, 'getName').mockReturnValue('MockValue');
-  },
-});
-
-const { sut } = provider;
-
-expect(sut.callDependencyGetName()).toBe('MockValue');
-expect(spy).toBeCalledTimes(1);
-```
-
-If you forget to mock a dependency's function:
-
-```
-const services = new ServiceCollection(Provider);
-...
-const provider = services.build();
-
-let spy;
-ProviderMock.mock(provider);
-
-const { sut } = provider;
-
-expect(sut.callDependencyGetName()).toBe('MockValue'); // Throws ShouldBeMockedDependencyError: 'function dependency.getName'
-expect(spy).toBeCalledTimes(1);
-```
-
-Note that a provider should only be provided to this function once and should be recreated for every test

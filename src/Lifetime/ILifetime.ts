@@ -1,9 +1,11 @@
-import { Factory } from '../types';
-import { ServiceProvider } from '../ServiceProvider';
+import { Factory, Key } from '../ServiceCollection/IServiceCollection';
+import { ScopedContext } from '../ServiceProvider/ScopedContext';
 
 export interface ILifetime<T, E> {
-  readonly name: string;
+  readonly name: Key<E>;
   factory: Factory<T, E>;
 
-  provide(provider: ServiceProvider<E>): T;
+  provide(context: ScopedContext<E>): T;
+
+  clone(): ILifetime<T, E>;
 }
