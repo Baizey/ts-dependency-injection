@@ -1,158 +1,124 @@
-import { DependencyOptions, LifetimeConstructor, ProviderConstructor } from './types';
-import { DependencyConstructor, Factory, NameSelector, ProviderFactory, ProviderScope } from '../types';
-import { properties } from '../utils';
-import { IServiceCollection } from './IServiceCollection';
-import { ILifetime } from '../Lifetime/ILifetime';
-import { DuplicateDependencyError } from '../Errors/DuplicateDependencyError';
-import { UnknownDependencyError } from '../Errors/UnknownDependencyError';
-import { MultiDependencyError } from '../Errors/MultiDependencyError';
-import { Singleton } from '../Lifetime/Singleton';
-import { Scoped } from '../Lifetime/Scoped';
-import { Transient } from '../Lifetime/Transient';
-import { InternalServiceProvider, ServiceProvider } from '../ServiceProvider';
+import { ILifetime, Scoped, Singleton, Transient } from '../Lifetime';
+import { DuplicateDependencyError, ShouldBeMockedDependencyError } from '../Errors';
+import { IServiceProvider, ServiceProvider } from '../ServiceProvider';
+import {
+  DependencyOptions,
+  Factory,
+  FunctionSelector,
+  IServiceCollection,
+  Key,
+  LifetimeConstructor,
+  Selector,
+} from './IServiceCollection';
+import { ScopedContext } from '../ServiceProvider/ScopedContext';
 
-export class ServiceCollection<E> implements IServiceCollection<E> {
-  readonly template: Required<E>;
-  private readonly lifetimes: Record<string, ILifetime<any, E>> = {};
-  private readonly dependencyToProvider: Record<string, string>;
+export type RecordCollection<E> = Record<Key<E>, ILifetime<unknown, E>>;
 
-  constructor(ProviderTemplate: ProviderConstructor<E>) {
-    this.template =
-      typeof ProviderTemplate === 'object'
-        ? (ProviderTemplate as Required<E>)
-        : (new ProviderTemplate() as Required<E>);
-    this.dependencyToProvider = Object.keys(this.template).reduce((a, b) => {
-      a[b.toLowerCase()] = b;
-      return a;
-    }, {} as Record<string, string>);
+export class ServiceCollection<E = any> implements IServiceCollection<E> {
+  private readonly lifetimes: RecordCollection<E> = {} as RecordCollection<E>;
+
+  addSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void {
+    this.add(Singleton, options, selector);
   }
 
-  add<T>(Lifetime: LifetimeConstructor<T, E>, options: DependencyOptions<T, E>): void {
-    if (!this.tryAdd(Lifetime, options)) {
-      const [name] = this.resolvePropertyConstructor(options);
-      throw new DuplicateDependencyError(name);
-    }
+  addTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void {
+    this.add(Transient, options, selector);
   }
 
-  tryAdd<T>(Lifetime: LifetimeConstructor<T, E>, options: DependencyOptions<T, E>): boolean {
-    const [name, factory, dependency] = this.resolvePropertyConstructor(options);
+  addScoped<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void {
+    this.add(Scoped, options, selector);
+  }
 
-    if (!name) throw new UnknownDependencyError(dependency?.name || '');
-    if (this.lifetimes[name]) return false;
-
+  add<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>): void {
+    const name = ServiceCollection.extractSelector(selector);
+    if (name in this.lifetimes) throw new DuplicateDependencyError(name);
+    const factory = this.extractDependency(dependency);
     this.lifetimes[name] = new Lifetime(name, factory);
-    return true;
   }
 
-  get<T>(item: NameSelector<T, E>): ILifetime<T, E> | undefined {
-    return this.lifetimes[this.resolveProperty(item)] as ILifetime<T, E> | undefined;
+  get<T>(selector: Selector<T, E>): ILifetime<T, E> | undefined {
+    const key = ServiceCollection.extractSelector(selector);
+    return this.lifetimes[key] as ILifetime<T, E>;
   }
 
-  replace<T>(Lifetime: LifetimeConstructor<T, E>, options: DependencyOptions<T, E>): void {
-    const [name] = this.resolvePropertyConstructor(options);
-    this.remove(name);
-    this.add(Lifetime, options);
+  remove<T>(selector: Selector<T, E>): ILifetime<T, E> | undefined {
+    const result = this.get(selector);
+    if (result) delete this.lifetimes[result.name];
+    return result;
   }
 
-  remove<T>(item: NameSelector<T, E>): boolean {
-    const name = this.resolveProperty(item);
-
-    if (!this.lifetimes[name]) return false;
-
-    delete this.lifetimes[name];
-    return true;
+  private extractDependency<T>(Option: DependencyOptions<T, E>): Factory<T, E> {
+    if (typeof Option === 'function') return (p) => new Option(p);
+    return Option.factory;
   }
 
-  build(): ServiceProvider<E> {
-    const createContext: ProviderFactory<E> = (context?: ProviderScope): ServiceProvider<E> => {
-      const provider = new InternalServiceProvider<E>(this, createContext, { trail: {} }, context as unknown as {});
-      Object.keys(this.template).forEach((name) => {
-        Object.defineProperty(provider, name, { get: () => provider.getService(name) });
+  static extractSelector<T, E>(options: Selector<T, E>): Key<E> {
+    switch (typeof options) {
+      case 'function':
+        const proxy = new Proxy({}, { get: (t, p) => p.toString() }) as FunctionSelector<T, E>;
+        return options(proxy);
+      case 'symbol':
+        return options.toString() as Key<E>;
+      case 'string':
+        return options;
+      case 'object':
+        return options.name;
+      default:
+        throw new Error(`Name selector could not match anything`);
+    }
+  }
+
+  build(): IServiceProvider<E> {
+    const lifetimes = this.cloneLifetimes();
+    return new ServiceProvider<E>(lifetimes);
+  }
+
+  buildMock(mock?: {
+    [key in keyof E]?: (mockedValue: Required<E>[key], provider: IServiceProvider<E>) => void;
+  }): IServiceProvider<E> {
+    const provider = this.build();
+    Object.entries<ILifetime<unknown, E>>(provider.lifetimes)
+      .map(([key, value]) => ({
+        name: key as Key<E>,
+        lifetime: value,
+      }))
+      .forEach(({ name, lifetime }) => {
+        const valueProxy = new Proxy(
+          {},
+          {
+            get(target, prop) {
+              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), 'function');
+            },
+          },
+        ) as any;
+
+        provider.lifetimes[name] = new Proxy(lifetime, {
+          get(target, prop: keyof ILifetime<unknown, E>) {
+            if (prop !== 'provide') return target[prop];
+            return (context: ScopedContext<E>) => {
+              const depth = Object.keys(context.validation.trail).length;
+              if (depth === 0) return target.provide(context);
+
+              const mockSetup = mock && mock[name];
+              if (mockSetup) mockSetup(valueProxy, context);
+              return valueProxy;
+            };
+          },
+        });
       });
-      return provider as ServiceProvider<E>;
-    };
 
-    return createContext();
+    return provider;
   }
 
-  validate(): void {
-    const serviceProvider = this.build();
-    const keys = Object.keys(this.template);
-    const unresolved: Error[] = [];
-
-    for (let key of keys) {
-      try {
-        serviceProvider.getService(key);
-      } catch (e: unknown) {
-        unresolved.push(e as Error);
-      }
-    }
-
-    if (unresolved.length === 0) return;
-
-    throw new MultiDependencyError(unresolved);
-  }
-
-  resolveProperty<T>(item?: NameSelector<T, E>, dependency?: DependencyConstructor<T, E>): string {
-    if (item) return typeof item === 'string' ? item : item(properties(this.template));
-    if (dependency) return this.dependencyToProvider[dependency.name.toLowerCase()];
-    throw new UnknownDependencyError('<missing arguments>');
-  }
-
-  private resolvePropertyConstructor<T>(
-    options: DependencyOptions<T, E>,
-  ): [string, Factory<T, E>, DependencyConstructor<T, E> | undefined] {
-    if (typeof options === 'function') {
-      return [this.resolveProperty(undefined, options), (p) => new options(p), options];
-    } else if (options.dependency) {
-      const { dependency, selector } = options;
-      return [this.resolveProperty(selector, dependency), (p) => new dependency(p), dependency];
-    } else {
-      const { selector, factory } = options;
-      return [this.resolveProperty(selector), factory, undefined];
-    }
-  }
-
-  /**
-   * @param options defaults to 'provider'
-   */
-  addProvider(options: NameSelector<ServiceProvider<E>, E> = 'provider') {
-    this.addScoped({ factory: (p) => p.createScoped(), selector: options });
-  }
-
-  addSingleton<T>(options: DependencyOptions<T, E>): void {
-    return this.add(Singleton, options);
-  }
-
-  addScoped<T>(options: DependencyOptions<T, E>): void {
-    return this.add(Scoped, options);
-  }
-
-  addTransient<T>(options: DependencyOptions<T, E>): void {
-    return this.add(Transient, options);
-  }
-
-  tryAddSingleton<T>(options: DependencyOptions<T, E>): boolean {
-    return this.tryAdd(Singleton, options);
-  }
-
-  tryAddScoped<T>(options: DependencyOptions<T, E>): boolean {
-    return this.tryAdd(Scoped, options);
-  }
-
-  tryAddTransient<T>(options: DependencyOptions<T, E>): boolean {
-    return this.tryAdd(Transient, options);
-  }
-
-  replaceSingleton<T>(options: DependencyOptions<T, E>): void {
-    return this.replace(Singleton, options);
-  }
-
-  replaceScoped<T>(options: DependencyOptions<T, E>): void {
-    return this.replace(Scoped, options);
-  }
-
-  replaceTransient<T>(options: DependencyOptions<T, E>): void {
-    return this.replace(Transient, options);
+  private cloneLifetimes(): RecordCollection<E> {
+    return Object.entries(this.lifetimes)
+      .map(([key, value]) => ({
+        name: key as Key<E>,
+        lifetime: (value as ILifetime<unknown, E>).clone(),
+      }))
+      .reduce((a, { name, lifetime }) => {
+        a[name] = lifetime;
+        return a;
+      }, {} as RecordCollection<E>);
   }
 }

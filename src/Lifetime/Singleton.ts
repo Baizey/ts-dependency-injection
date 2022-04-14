@@ -1,41 +1,31 @@
-import { Factory } from '../types';
+import { Factory, Key } from '../ServiceCollection/IServiceCollection';
 import { ILifetime } from './ILifetime';
-import { ServiceProvider } from '../ServiceProvider';
-import { CircularDependencyError } from '../Errors/CircularDependencyError';
+import { ScopedContext } from '../ServiceProvider/ScopedContext';
 
 export class Singleton<T, E> implements ILifetime<T, E> {
-  readonly name: string;
+  readonly name: Key<E>;
   factory: Factory<T, E>;
   private value?: T;
 
-  constructor(name: string, factory: Factory<T, E>) {
+  constructor(name: Key<E>, factory: Factory<T, E>) {
     this.name = name;
     this.factory = factory;
   }
 
-  provide(provider: ServiceProvider<E>) {
-    // If already provided, simply  return old instance
+  provide(context: ScopedContext<E>) {
     if (this.value) return this.value;
 
-    const {
-      _: { validation },
-    } = provider;
+    const old = context.validation.lastSingleton;
+    context.validation.lastSingleton = this.name;
 
-    // Handle errors
-    if (validation.trail[this.name]) throw new CircularDependencyError(this.name, this.name);
+    const value = this.factory(context.proxy);
 
-    // Pre-calling factory
-    const old = validation.lastSingleton;
-    validation.lastSingleton = this.name;
-    validation.trail[this.name] = true;
-
-    // Calling factory
-    const value = this.factory(provider);
-
-    // Post calling factory
-    validation.lastSingleton = old;
-    delete validation.trail[this.name];
+    context.validation.lastSingleton = old;
 
     return (this.value = value);
+  }
+
+  clone(): ILifetime<T, E> {
+    return new Singleton(this.name, this.factory);
   }
 }

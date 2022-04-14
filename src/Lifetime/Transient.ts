@@ -1,36 +1,21 @@
-import { Factory } from '../types';
+import { Factory, Key } from '../ServiceCollection/IServiceCollection';
 import { ILifetime } from './ILifetime';
-import { ServiceProvider } from '../ServiceProvider';
-import { CircularDependencyError } from '../Errors/CircularDependencyError';
+import { ScopedContext } from '../ServiceProvider/ScopedContext';
 
 export class Transient<T, E> implements ILifetime<T, E> {
-  readonly name: string;
+  readonly name: Key<E>;
   factory: Factory<T, E>;
 
-  constructor(name: string, factory: Factory<T, E>) {
+  constructor(name: Key<E>, factory: Factory<T, E>) {
     this.name = name;
     this.factory = factory;
   }
 
-  provide(provider: ServiceProvider<E>) {
-    const {
-      _: {
-        validation: { trail },
-      },
-    } = provider;
+  provide(context: ScopedContext<E>) {
+    return this.factory(context.proxy);
+  }
 
-    // Handle errors
-    if (trail[this.name]) throw new CircularDependencyError(this.name, this.name);
-
-    // Pre-calling factory
-    trail[this.name] = true;
-
-    // Calling factory
-    const value = this.factory(provider);
-
-    // Post-calling factory
-    delete trail[this.name];
-
-    return value;
+  clone(): ILifetime<T, E> {
+    return new Transient(this.name, this.factory);
   }
 }
