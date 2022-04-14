@@ -1,15 +1,16 @@
 import { DependencyErrorType } from './types';
+import { Key } from '../tst/IServiceCollection';
 
 export class CircularDependencyError extends Error {
   readonly lifetime: string;
   readonly cause: string;
   readonly type: DependencyErrorType = DependencyErrorType.Circular;
 
-  constructor(lifetime: string, cause: string) {
+  constructor(lifetime: Key<any>, cause: Key<any>) {
     super(
-      `'${lifetime}' and '${cause}' has circular dependency, two dependencies cannot depend on each other no matter how long the chain is between them`,
+      `'${lifetime.toString()}' and '${cause.toString()}' has circular dependency, two dependencies cannot depend on each other no matter how long the chain is between them`,
     );
-    this.lifetime = lifetime;
-    this.cause = cause;
+    this.lifetime = lifetime.toString();
+    this.cause = cause.toString();
   }
 }

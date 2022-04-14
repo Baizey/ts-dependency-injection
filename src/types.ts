@@ -1,14 +1,15 @@
 import { Keys } from './utils';
 import { ServiceProvider } from './index';
+import { Key } from './tst/IServiceCollection';
 
 export type Factory<T, E> = (provider: ServiceProvider<E>) => T;
 
 export type ProviderValidation = {
-  lastSingleton?: string;
-  trail: Record<string, boolean>;
+  lastSingleton?: Key<any>;
+  trail: Record<Key<any>, boolean>;
 };
 
-export type ProviderScope = Record<string, any>;
+export type ProviderScope = Record<Key<any>, any>;
 
 export type ProviderFactory<E> = (context?: ProviderScope) => ServiceProvider<E>;
 
