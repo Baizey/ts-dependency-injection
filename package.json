@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/Baizey/ts-dependency-injection"
   },
-  "main": "src/index.ts",
+  "main": "lib/index.js",
   "files": [
     "lib/**/*"
   ],
@@ -15,8 +15,7 @@
     "test": "test"
   },
   "scripts": {
-    "build": "tsc",
-    "clean": "rmdir /Q/S \"lib\"",
+    "build": "tsc --build",
     "test": "jest --coverage"
   },
   "devDependencies": {
