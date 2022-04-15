@@ -146,7 +146,7 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
           get(target, prop: keyof ILifetime<unknown, E>) {
             if (prop !== 'provide') return target[prop];
             return (context: ScopedContext<E>) => {
-              if (context.validation.trail.depth === 1) return target.provide(context);
+              if (context.dependencyTracker.depth === 1) return target.provide(context);
               switch (typeof mockSetup) {
                 case 'undefined':
                   return valueProxy;
