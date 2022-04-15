@@ -14,7 +14,7 @@ export class Scoped<T, E> implements ILifetime<T, E> {
 
   provide(provider: ScopedContext<E>) {
     const {
-      validation: { lastSingleton },
+      dependencyTracker: { lastSingleton },
       scope,
     } = provider;
     if (lastSingleton) throw new SingletonScopedDependencyError(lastSingleton, this.name);

@@ -15,12 +15,12 @@ export class Singleton<T, E> implements ILifetime<T, E> {
   provide(context: ScopedContext<E>) {
     if (this.value) return this.value;
 
-    const old = context.validation.lastSingleton;
-    context.validation.lastSingleton = this.name;
+    const old = context.dependencyTracker.lastSingleton;
+    context.dependencyTracker.lastSingleton = this.name;
 
     const value = this.factory(context.proxy);
 
-    context.validation.lastSingleton = old;
+    context.dependencyTracker.lastSingleton = old;
 
     return (this.value = value);
   }
