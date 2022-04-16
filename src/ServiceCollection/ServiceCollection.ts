@@ -4,7 +4,7 @@ import { IServiceProvider, ServiceProvider } from '../ServiceProvider';
 import {
   DependencyOptions,
   Factory,
-  FunctionSelector,
+  SelectorOptions,
   IServiceCollection,
   Key,
   LifetimeConstructor,
@@ -97,14 +97,12 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
   static extractSelector<T, E>(options: Selector<T, E>): Key<E> {
     switch (typeof options) {
       case 'function':
-        const proxy = new Proxy({}, { get: (t, p) => p.toString() }) as FunctionSelector<T, E>;
+        const proxy = new Proxy({}, { get: (t, p) => p.toString() }) as SelectorOptions<T, E>;
         return options(proxy);
       case 'symbol':
         return options.toString() as Key<E>;
       case 'string':
         return options;
-      case 'object':
-        return options.name;
       default:
         throw new Error(`Name selector could not match anything`);
     }

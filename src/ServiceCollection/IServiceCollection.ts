@@ -3,15 +3,9 @@ import { IServiceProvider } from '../ServiceProvider';
 
 export type Key<E> = keyof E & (string | symbol);
 
-export type WantedKeys<T, E> = { [K in keyof E]: E[K] extends T ? K : never }[keyof E];
-export type FunctionSelector<T, E> = { [key in WantedKeys<T, E>]: key & string };
-export type Selector<T, E> =
-  | (keyof E & (string | symbol))
-  | ((e: FunctionSelector<T, E>) => keyof E & string)
-  | {
-      name: keyof E & string;
-      prototype: T;
-    };
+export type MatchingProperties<T, E> = { [K in keyof E]: E[K] extends T ? K : never }[keyof E];
+export type SelectorOptions<T, E> = { [key in MatchingProperties<T, E>]: key & Key<E> };
+export type Selector<T, E> = Key<E> | ((e: SelectorOptions<T, E>) => Key<E>);
 
 export type Factory<T, E> = (provider: E) => T;
 export type DependencyConstructor<T, E> = { new (props: E): T } | { new (): T };
