@@ -1,5 +1,5 @@
 import { DependencyErrorType } from './types';
-import { Key } from '../ServiceCollection/IServiceCollection';
+import { Key } from '../ServiceCollection';
 
 export class DuplicateDependencyError extends Error {
   readonly lifetime: string;

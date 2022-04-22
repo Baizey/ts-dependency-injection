@@ -1,10 +1,10 @@
-import { Key, Selector } from '../ServiceCollection/IServiceCollection';
+import { Key, Selector } from '../ServiceCollection';
 import { ILifetime } from '../Lifetime';
 import { CircularDependencyError, ExistenceDependencyError } from '../Errors';
 import { ServiceCollection } from '../ServiceCollection';
 import { IServiceProvider } from './IServiceProvider';
 
-interface IDependencyTracker {
+export interface IDependencyTracker {
   lastSingleton?: Key<any>;
   readonly depth: number;
 

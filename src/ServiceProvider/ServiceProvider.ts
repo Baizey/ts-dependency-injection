@@ -1,4 +1,4 @@
-import { Key, Selector } from '../ServiceCollection/IServiceCollection';
+import { Key, Selector } from '../ServiceCollection';
 import { ILifetime } from '../Lifetime';
 import { IServiceProvider } from './IServiceProvider';
 import { ScopedContext } from './ScopedContext';

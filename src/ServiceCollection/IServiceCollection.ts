@@ -1,5 +1,6 @@
 import { ILifetime } from '../Lifetime';
 import { IServiceProvider } from '../ServiceProvider';
+import { MockSetup } from './ServiceCollection';
 
 export type Key<E> = keyof E & (string | symbol);
 
@@ -43,4 +44,6 @@ export interface IServiceCollection<E> {
   remove<T>(item: Selector<T, E>): ILifetime<T, E> | undefined;
 
   build(): IServiceProvider<E>;
+
+  buildMock(mock?: MockSetup<E>): IServiceProvider<E>;
 }
