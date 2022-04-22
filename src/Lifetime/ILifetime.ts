@@ -1,5 +1,5 @@
-import { Factory, Key } from '../ServiceCollection/IServiceCollection';
-import { ScopedContext } from '../ServiceProvider/ScopedContext';
+import { Factory, Key } from '../ServiceCollection';
+import { ScopedContext } from '../ServiceProvider';
 
 export interface ILifetime<T, E> {
   readonly name: Key<E>;

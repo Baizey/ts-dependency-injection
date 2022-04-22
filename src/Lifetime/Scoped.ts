@@ -1,7 +1,7 @@
-import { Factory, Key } from '../ServiceCollection/IServiceCollection';
+import { Factory, Key } from '../ServiceCollection';
 import { SingletonScopedDependencyError } from '../Errors';
 import { ILifetime } from './ILifetime';
-import { ScopedContext } from '../ServiceProvider/ScopedContext';
+import { ScopedContext } from '../ServiceProvider';
 
 export class Scoped<T, E> implements ILifetime<T, E> {
   readonly name: Key<E>;

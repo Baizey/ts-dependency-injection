@@ -1,8 +1,6 @@
 ﻿import 'jest';
-import { ServiceCollection, Transient } from '../../src';
+import { CircularDependencyError, ScopedContext, ServiceCollection, Transient } from '../../src';
 import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from '../models';
-import { CircularDependencyError } from '../../src';
-import { ScopedContext } from '../../src/ServiceProvider/ScopedContext';
 
 function setup() {
   const services = new ServiceCollection<Provider>();

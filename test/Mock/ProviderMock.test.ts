@@ -1,6 +1,5 @@
-import { ServiceCollection, ShouldBeMockedDependencyError } from '../../src';
+import { MockSetup, ServiceCollection, ShouldBeMockedDependencyError } from '../../src';
 import { Alice, Bob, Dummy, Provider } from '../models';
-import { MockSetup } from '../../src/ServiceCollection/ServiceCollection';
 
 function setup(mock?: MockSetup<Provider>) {
   const services = new ServiceCollection<Provider>();

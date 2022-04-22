@@ -1,6 +1,6 @@
-import { Factory, Key } from '../ServiceCollection/IServiceCollection';
+import { Factory, Key } from '../ServiceCollection';
 import { ILifetime } from './ILifetime';
-import { ScopedContext } from '../ServiceProvider/ScopedContext';
+import { ScopedContext } from '../ServiceProvider';
 
 export class Transient<T, E> implements ILifetime<T, E> {
   readonly name: Key<E>;

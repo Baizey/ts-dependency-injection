@@ -1,7 +1,6 @@
 ﻿import 'jest';
-import { ServiceCollection, Singleton, CircularDependencyError } from '../../src';
 import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from '../models';
-import { ScopedContext } from '../../src/ServiceProvider/ScopedContext';
+import { CircularDependencyError, ScopedContext, ServiceCollection, Singleton } from '../../src';
 
 function setup() {
   const services = new ServiceCollection<Provider>();

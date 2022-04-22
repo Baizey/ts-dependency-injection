@@ -1,7 +1,5 @@
-import { Scoped, ServiceCollection, Singleton, Transient } from '../../src';
+import { ServiceCollection, Scoped, Singleton, Transient, ScopedContext, DuplicateDependencyError } from '../../src';
 import { Alice, Bob, Dummy, Provider } from '../models';
-import { DuplicateDependencyError } from '../../src';
-import { ScopedContext } from '../../src/ServiceProvider/ScopedContext';
 
 test('No options', () => {
   const sut = new ServiceCollection<Provider>();

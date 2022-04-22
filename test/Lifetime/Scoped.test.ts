@@ -1,5 +1,12 @@
 ﻿import 'jest';
-import { Scoped, ServiceCollection, Singleton } from '../../src';
+import {
+  CircularDependencyError,
+  Scoped,
+  ScopedContext,
+  ServiceCollection,
+  Singleton,
+  SingletonScopedDependencyError,
+} from '../../src';
 import {
   Alice,
   Bob,
@@ -13,9 +20,6 @@ import {
   ScopedC,
   ScopedProvider,
 } from '../models';
-import { CircularDependencyError } from '../../src';
-import { SingletonScopedDependencyError } from '../../src';
-import { ScopedContext } from '../../src/ServiceProvider/ScopedContext';
 
 test('Invoke', () => {
   const services = new ServiceCollection<Provider>();

@@ -10,7 +10,7 @@ import {
   LifetimeConstructor,
   Selector,
 } from './IServiceCollection';
-import { ScopedContext } from '../ServiceProvider/ScopedContext';
+import { ScopedContext } from '../ServiceProvider';
 
 export type MockSetup<E> = {
   [key in keyof E]?: Partial<Required<E>[key]> | Factory<E[key], E>;
