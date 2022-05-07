@@ -1,6 +1,6 @@
-import { ILifetime, Scoped, Singleton, Transient } from '../Lifetime';
-import { DependencyErrorType, DuplicateDependencyError, ShouldBeMockedDependencyError } from '../Errors';
-import { IServiceProvider, ServiceProvider } from '../ServiceProvider';
+import { ILifetime, Scoped, Singleton, Transient } from "../Lifetime";
+import { DependencyErrorType, DuplicateDependencyError, ShouldBeMockedDependencyError } from "../Errors";
+import { IServiceProvider, ServiceProvider } from "../ServiceProvider";
 import {
   DependencyOptions,
   Factory,
@@ -8,9 +8,9 @@ import {
   IServiceCollection,
   Key,
   LifetimeConstructor,
-  Selector,
-} from './IServiceCollection';
-import { ScopedContext } from '../ServiceProvider';
+  Selector, StatefulDependencyConstructor
+} from "./IServiceCollection";
+import { ScopedContext } from "../ServiceProvider";
 
 export type MockSetup<E> = {
   [key in keyof E]?: Partial<Required<E>[key]> | Factory<E[key], E>;
@@ -59,6 +59,12 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
     }
   }
 
+  addStateful<T, P>(constructor: StatefulDependencyConstructor<T, E, P>, selector: Selector<Factory<T, P>, E>): void {
+    return this.addSingleton<Factory<T, P>>({
+      factory: provider => (props: P) => new constructor(provider, props)
+    }, selector);
+  }
+
   addSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void {
     this.add(Singleton, options, selector);
   }
@@ -90,18 +96,18 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
   }
 
   private extractDependency<T>(Option: DependencyOptions<T, E>): Factory<T, E> {
-    if (typeof Option === 'function') return (p) => new Option(p);
+    if (typeof Option === "function") return (p) => new Option(p);
     return Option.factory;
   }
 
   static extractSelector<T, E>(options: Selector<T, E>): Key<E> {
     switch (typeof options) {
-      case 'function':
+      case "function":
         const proxy = new Proxy({}, { get: (t, p) => p.toString() }) as SelectorOptions<T, E>;
         return options(proxy);
-      case 'symbol':
+      case "symbol":
         return options.toString() as Key<E>;
-      case 'string':
+      case "string":
         return options;
       default:
         throw new Error(`Name selector could not match anything`);
@@ -118,7 +124,7 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
     Object.entries<ILifetime<unknown, E>>(provider.lifetimes)
       .map(([key, value]) => ({
         name: key as Key<E>,
-        lifetime: value,
+        lifetime: value
       }))
       .forEach(({ name, lifetime }) => {
         const mockSetup = mock && mock[name];
@@ -126,35 +132,35 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
           {},
           {
             construct(target, prop) {
-              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), 'construct');
+              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), "construct");
             },
             apply(target, prop) {
-              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), 'apply');
+              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), "apply");
             },
             get(target, prop) {
-              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), 'get');
+              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), "get");
             },
             set(target, prop) {
-              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), 'set');
-            },
-          },
+              throw new ShouldBeMockedDependencyError(name.toString(), prop.toString(), "set");
+            }
+          }
         ) as any;
 
         provider.lifetimes[name] = new Proxy(lifetime, {
           get(target, prop: keyof ILifetime<unknown, E>) {
-            if (prop !== 'provide') return target[prop];
+            if (prop !== "provide") return target[prop];
             return (context: ScopedContext<E>) => {
               if (context.dependencyTracker.depth === 1) return target.provide(context);
               switch (typeof mockSetup) {
-                case 'undefined':
+                case "undefined":
                   return valueProxy;
-                case 'function':
+                case "function":
                   return mockSetup(context.proxy);
                 default:
                   return mockSetup;
               }
             };
-          },
+          }
         });
       });
 
@@ -165,7 +171,7 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
     return Object.entries(this.lifetimes)
       .map(([key, value]) => ({
         name: key as Key<E>,
-        lifetime: (value as ILifetime<unknown, E>).clone(),
+        lifetime: (value as ILifetime<unknown, E>).clone()
       }))
       .reduce((a, { name, lifetime }) => {
         a[name] = lifetime;
