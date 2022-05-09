@@ -1,7 +1,7 @@
-import { Scoped, ServiceCollection, Singleton, Transient, ScopedContext } from '../../src';
-import { Alice, Bob, Dummy, Provider } from '../models';
+import { Scoped, ScopedContext, ServiceCollection, Singleton, Transient } from "../../src";
+import { Alice, Bob, Dummy, Provider } from "../models";
 
-test('No options', () => {
+test("No options", () => {
   const sut = new ServiceCollection<Provider>();
   sut.add(Singleton, Bob, (p) => p.bob);
   sut.add(Singleton, Dummy, (provider) => provider.dummy);
@@ -11,7 +11,7 @@ test('No options', () => {
   const actual = sut.get((p) => p.alice);
   expect(actual).toBeInstanceOf(Singleton);
 
-  const instance = actual?.provide(new ScopedContext<Provider>(sut.build().lifetimes));
+  const instance = actual?.provide(new ScopedContext<Provider>(sut.build()));
   expect(instance).toBeInstanceOf(Alice);
 });
 
@@ -27,7 +27,7 @@ test('with factory', () => {
   const actual = sut.get((p) => p.alice);
   expect(actual).toBeInstanceOf(Singleton);
 
-  const instance = actual?.provide(new ScopedContext<Provider>(sut.build().lifetimes));
+  const instance = actual?.provide(new ScopedContext<Provider>(sut.build()));
   expect(instance).toBeInstanceOf(Alice);
 });
 

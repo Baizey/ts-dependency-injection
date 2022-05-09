@@ -1,14 +1,14 @@
-import { ServiceCollection, Scoped, Singleton, Transient, ScopedContext, DuplicateDependencyError } from '../../src';
-import { Alice, Bob, Dummy, Provider } from '../models';
+import { DuplicateDependencyError, Scoped, ScopedContext, ServiceCollection, Singleton, Transient } from "../../src";
+import { Alice, Bob, Dummy, Provider } from "../models";
 
-test('No options', () => {
+test("No options", () => {
   const sut = new ServiceCollection<Provider>();
   sut.add(Singleton, Alice, (p) => p.alice);
   sut.add(Singleton, Bob, (p) => p.bob);
   sut.add(Singleton, Dummy, (provider) => provider.dummy);
 
   const actual = sut.get((p) => p.alice);
-  actual?.provide(new ScopedContext<Provider>(sut.build().lifetimes));
+  actual?.provide(new ScopedContext<Provider>(sut.build()));
 
   expect(actual).toBeInstanceOf(Singleton);
   expect(actual).not.toBeUndefined();
@@ -25,7 +25,7 @@ test('With factory', () => {
   const actual = sut.get((p) => p.alice);
 
   expect(actual).toBeInstanceOf(Singleton);
-  expect(actual?.provide(new ScopedContext<Provider>(sut.build().lifetimes))).toBe(expected);
+  expect(actual?.provide(new ScopedContext<Provider>(sut.build()))).toBe(expected);
 });
 
 test('With Selector', () => {
@@ -39,7 +39,7 @@ test('With Selector', () => {
   const actual = sut.get((p) => p.alice);
 
   expect(actual).toBeInstanceOf(Singleton);
-  expect(actual?.provide(new ScopedContext<Provider>(sut.build().lifetimes))).toBe(expected);
+  expect(actual?.provide(new ScopedContext<Provider>(sut.build()))).toBe(expected);
 });
 
 test('Error duplicate', () => {
