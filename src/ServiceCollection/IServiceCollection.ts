@@ -1,6 +1,7 @@
 import { ILifetime } from "../Lifetime";
-import { IServiceProvider } from "../ServiceProvider";
+import { IServiceProvider, ScopedContext } from "../ServiceProvider";
 import { MockSetup } from "./ServiceCollection";
+import { Stateful } from "../types";
 
 export type Key<E> = keyof E & (string | symbol);
 
@@ -8,7 +9,7 @@ export type MatchingProperties<T, E> = { [K in keyof E]: E[K] extends T ? K : ne
 export type SelectorOptions<T, E> = { [key in MatchingProperties<T, E>]: key & Key<E> };
 export type Selector<T, E> = Key<E> | ((e: SelectorOptions<T, E>) => Key<E>);
 
-export type Factory<T, E> = (data: E) => T;
+export type Factory<T, E> = (data: E, provider: ScopedContext<E>) => T;
 export type DependencyConstructor<T, E> = { new(props: E): T } | { new(): T };
 export type StatefulDependencyConstructor<T, E, P> = { new(provider: E, props: P): T } | DependencyConstructor<T, E>
 export type DependencyOptions<T, E> = { factory: Factory<T, E> } | DependencyConstructor<T, E>;
@@ -32,7 +33,7 @@ export interface IServiceCollection<E> {
 
   tryAdd<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 
-  addStateful<T, P>(constructor: StatefulDependencyConstructor<T, E, P>, selector: Selector<Factory<T, P>, E>): void;
+  addStateful<P, T>(constructor: StatefulDependencyConstructor<T, E, P>, selector: Selector<Stateful<P, T>, E>): void;
 
   addSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void;
 

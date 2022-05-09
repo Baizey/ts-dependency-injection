@@ -1,9 +1,10 @@
-import { Factory, Key } from '../ServiceCollection';
-import { SingletonScopedDependencyError } from '../Errors';
-import { ILifetime } from './ILifetime';
-import { ScopedContext } from '../ServiceProvider';
+import { Factory, Key } from "../ServiceCollection";
+import { SingletonScopedDependencyError } from "../Errors";
+import { ILifetime } from "./ILifetime";
+import { ScopedContext } from "../ServiceProvider";
 
 export class Scoped<T, E> implements ILifetime<T, E> {
+  readonly isSingleton = false;
   readonly name: Key<E>;
   factory: Factory<T, E>;
 
@@ -14,12 +15,12 @@ export class Scoped<T, E> implements ILifetime<T, E> {
 
   provide(provider: ScopedContext<E>) {
     const {
-      dependencyTracker: { lastSingleton },
-      scope,
+      dependencyTracker: { singleton },
+      scope
     } = provider;
-    if (lastSingleton) throw new SingletonScopedDependencyError(lastSingleton, this.name);
+    if (singleton) throw new SingletonScopedDependencyError(singleton.name, this.name);
 
-    const value = scope[this.name] ?? this.factory(provider.proxy);
+    const value = scope[this.name] ?? this.factory(provider.proxy, provider);
 
     return (scope[this.name] = value);
   }

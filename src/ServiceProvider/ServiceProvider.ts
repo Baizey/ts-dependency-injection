@@ -1,7 +1,7 @@
-import { Key, Selector } from '../ServiceCollection';
-import { ILifetime } from '../Lifetime';
-import { IServiceProvider } from './IServiceProvider';
-import { ScopedContext } from './ScopedContext';
+import { Key, Selector } from "../ServiceCollection";
+import { ILifetime } from "../Lifetime";
+import { IServiceProvider } from "./IServiceProvider";
+import { ScopedContext } from "./ScopedContext";
 
 export class ServiceProvider<E> implements IServiceProvider<E> {
   readonly lifetimes: Record<Key<E>, ILifetime<any, E>>;
@@ -13,13 +13,13 @@ export class ServiceProvider<E> implements IServiceProvider<E> {
     this.proxy = new Proxy(
       {},
       {
-        get: (target, prop: Key<E>) => self.provide(prop),
-      },
+        get: (target, prop: Key<E>) => self.provide(prop)
+      }
     ) as E;
   }
 
   provide<T>(selector: Selector<T, E>): T {
-    const context = new ScopedContext<E>(this.lifetimes);
+    const context = new ScopedContext<E>(this);
     return context.provide(selector);
   }
 }

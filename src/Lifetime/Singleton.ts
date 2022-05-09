@@ -1,8 +1,9 @@
-import { Factory, Key } from '../ServiceCollection';
-import { ILifetime } from './ILifetime';
-import { ScopedContext } from '../ServiceProvider';
+import { Factory, Key } from "../ServiceCollection";
+import { ILifetime } from "./ILifetime";
+import { ScopedContext } from "../ServiceProvider";
 
 export class Singleton<T, E> implements ILifetime<T, E> {
+  readonly isSingleton = true;
   readonly name: Key<E>;
   factory: Factory<T, E>;
   private value?: T;
@@ -14,14 +15,7 @@ export class Singleton<T, E> implements ILifetime<T, E> {
 
   provide(context: ScopedContext<E>) {
     if (this.value) return this.value;
-
-    const old = context.dependencyTracker.lastSingleton;
-    context.dependencyTracker.lastSingleton = this.name;
-
-    const value = this.factory(context.proxy);
-
-    context.dependencyTracker.lastSingleton = old;
-
+    const value = this.factory(context.proxy, context);
     return (this.value = value);
   }
 

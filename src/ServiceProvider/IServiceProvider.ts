@@ -1,5 +1,4 @@
-import { Selector } from '../ServiceCollection';
-import { RecordCollection } from '../ServiceCollection';
+import { RecordCollection, Selector } from "../ServiceCollection";
 
 export interface IServiceProvider<E> {
   readonly proxy: E;

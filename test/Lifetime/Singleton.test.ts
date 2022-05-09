@@ -1,16 +1,16 @@
-﻿import 'jest';
-import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from '../models';
-import { CircularDependencyError, ScopedContext, ServiceCollection, Singleton } from '../../src';
+﻿import "jest";
+import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from "../models";
+import { CircularDependencyError, ScopedContext, ServiceCollection, Singleton } from "../../src";
 
 function setup() {
   const services = new ServiceCollection<Provider>();
   services.add(Singleton, Alice, (p) => p.alice);
   services.add(Singleton, Bob, (p) => p.bob);
   services.add(Singleton, Dummy, (provider) => provider.dummy);
-  return { services, context: new ScopedContext<Provider>(services.build().lifetimes) };
+  return { services, context: new ScopedContext<Provider>(services.build()) };
 }
 
-test('Invoke', () => {
+test("Invoke", () => {
   const { services, context } = setup();
   const sut = services.get((p) => p.alice);
 
@@ -18,7 +18,7 @@ test('Invoke', () => {
 
   expect(a).not.toBeUndefined();
 });
-test('Lifetime', () => {
+test("Lifetime", () => {
   const { services, context } = setup();
   const sut = services.get((p) => p.alice);
 
@@ -29,15 +29,15 @@ test('Lifetime', () => {
   expect(b).not.toBeUndefined();
   expect(a).toBe(b);
 });
-test('Circular dependency', () => {
+test("Circular dependency", () => {
   const services = new ServiceCollection<CircularProvider>();
   services.add(Singleton, CircularA, (p) => p.CircularA);
   services.add(Singleton, CircularB, (p) => p.CircularB);
   const sut = services.get((p) => p.CircularA);
 
-  const context = new ScopedContext<CircularProvider>(services.build().lifetimes);
+  const context = new ScopedContext<CircularProvider>(services.build());
 
   expect(() => sut?.provide(context)).toThrowError(
-    new CircularDependencyError('CircularB', ['CircularB', 'CircularA']),
+    new CircularDependencyError("CircularB", ["CircularB", "CircularA"])
   );
 });

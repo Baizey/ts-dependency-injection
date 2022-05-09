@@ -1,55 +1,92 @@
-import { Key, Selector } from '../ServiceCollection';
-import { ILifetime } from '../Lifetime';
-import { CircularDependencyError, ExistenceDependencyError } from '../Errors';
-import { ServiceCollection } from '../ServiceCollection';
-import { IServiceProvider } from './IServiceProvider';
+import { Key, Selector, ServiceCollection } from "../ServiceCollection";
+import { ILifetime } from "../Lifetime";
+import { CircularDependencyError, ExistenceDependencyError } from "../Errors";
+import { IServiceProvider } from "./IServiceProvider";
 
 export interface IDependencyTracker {
-  lastSingleton?: Key<any>;
+  readonly last: ILifetime<any, any> | undefined;
   readonly depth: number;
 
-  enter(key: Key<any>): void;
+  readonly singleton?: ILifetime<any, any>;
 
-  leave(key: Key<any>): void;
+  enter(lifetime: ILifetime<any, any>): void;
+
+  leave(lifetime: ILifetime<any, any>): void;
+
+  traverseOnto(other: IDependencyTracker): void;
+
+  clone(): IDependencyTracker;
 }
 
 export class DependencyTracker implements IDependencyTracker {
-  private readonly lookup: Record<Key<any>, true> = {};
-  private readonly ordered: Key<any>[] = [];
+  private readonly singletons: ILifetime<any, any>[] = [];
+  private readonly lookup: Record<Key<any>, ILifetime<any, any>> = {};
+  private readonly ordered: ILifetime<any, any>[] = [];
 
   get depth() {
     return this.ordered.length;
   }
 
-  enter(key: Key<any>): void {
-    if (key in this.lookup) throw new CircularDependencyError(key, this.ordered);
-    this.ordered.push(key);
-    this.lookup[key] = true;
+  get singleton() {
+    if (this.singletons.length === 0) return undefined;
+    return this.singletons[this.singletons.length - 1];
   }
 
-  leave(key: Key<any>): void {
-    this.ordered.pop();
-    delete this.lookup[key];
+  get last() {
+    if (this.ordered.length === 0) return undefined;
+    return this.ordered[this.ordered.length - 1];
+  }
+
+  enter(lifetime: ILifetime<any, any>): void {
+    if (lifetime.name in this.lookup) throw new CircularDependencyError(lifetime.name, this.ordered.map(e => e.name));
+    this.ordered.push(lifetime);
+    if (lifetime.isSingleton) this.singletons.push(lifetime);
+    this.lookup[lifetime.name] = lifetime;
+  }
+
+  leave(lifetime: ILifetime<any, any>): void {
+    const last = this.ordered.pop();
+    if (last?.isSingleton) this.singletons.pop();
+    delete this.lookup[lifetime.name];
+  }
+
+  traverseOnto(other: IDependencyTracker) {
+    this.ordered.forEach(e => other.enter(e));
+  }
+
+  clone() {
+    const clone = new DependencyTracker();
+    this.ordered.forEach(e => clone.enter(e));
+    return clone;
   }
 }
 
 export type ProviderScope = Record<Key<any>, any>;
 
 export class ScopedContext<E> implements IServiceProvider<E> {
+  readonly dependencyTracker: IDependencyTracker;
   readonly lifetimes: Record<Key<E>, ILifetime<any, E>>;
   readonly proxy: E;
+  readonly scope: ProviderScope;
+  private parent: IServiceProvider<E>;
 
-  readonly dependencyTracker: IDependencyTracker = new DependencyTracker();
-  readonly scope: ProviderScope = {};
+  constructor(parent: IServiceProvider<E>) {
+    this.parent = parent;
+    this.dependencyTracker = new DependencyTracker();
+    if (parent instanceof ScopedContext) {
+      this.scope = parent.scope;
+      parent.dependencyTracker.traverseOnto(this.dependencyTracker);
+    } else {
+      this.scope = {};
+    }
 
-  constructor(lifetimes: Record<Key<E>, ILifetime<any, E>>) {
     const self = this;
-    this.lifetimes = lifetimes;
+    this.lifetimes = parent.lifetimes;
     this.proxy = new Proxy(
       {},
       {
-        get: (target, prop: Key<E>) => self.provide(prop),
-      },
+        get: (target, prop: Key<E>) => self.provide(prop)
+      }
     ) as E;
   }
 
@@ -58,12 +95,16 @@ export class ScopedContext<E> implements IServiceProvider<E> {
     const lifetime = this.lifetimes[key];
     if (!lifetime) throw new ExistenceDependencyError(key);
 
-    this.dependencyTracker.enter(lifetime.name);
+    this.dependencyTracker.enter(lifetime);
 
     const result = lifetime.provide(this);
 
-    this.dependencyTracker.leave(lifetime.name);
+    this.dependencyTracker.leave(lifetime);
 
     return result;
+  }
+
+  clone(): ScopedContext<E> {
+    return new ScopedContext(this);
   }
 }

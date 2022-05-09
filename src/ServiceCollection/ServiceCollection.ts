@@ -1,16 +1,17 @@
 import { ILifetime, Scoped, Singleton, Transient } from "../Lifetime";
 import { DependencyErrorType, DuplicateDependencyError, ShouldBeMockedDependencyError } from "../Errors";
-import { IServiceProvider, ServiceProvider } from "../ServiceProvider";
+import { IServiceProvider, ScopedContext, ServiceProvider } from "../ServiceProvider";
 import {
   DependencyOptions,
   Factory,
-  SelectorOptions,
   IServiceCollection,
   Key,
   LifetimeConstructor,
-  Selector, StatefulDependencyConstructor
+  Selector,
+  SelectorOptions,
+  StatefulDependencyConstructor
 } from "./IServiceCollection";
-import { ScopedContext } from "../ServiceProvider";
+import { Stateful } from "../types";
 
 export type MockSetup<E> = {
   [key in keyof E]?: Partial<Required<E>[key]> | Factory<E[key], E>;
@@ -59,9 +60,15 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
     }
   }
 
-  addStateful<T, P>(constructor: StatefulDependencyConstructor<T, E, P>, selector: Selector<Factory<T, P>, E>): void {
-    return this.addSingleton<Factory<T, P>>({
-      factory: provider => (props: P) => new constructor(provider, props)
+  addStateful<T, P>(Constructor: StatefulDependencyConstructor<T, E, P>, selector: Selector<Stateful<P, T>, E>): void {
+    return this.addTransient<Stateful<P, T>>({
+      factory: (_, context) => {
+        const lockedTraceContext = context.clone();
+        const creator: Stateful<P, T> = {
+          create: (props: P) => new Constructor(lockedTraceContext.proxy, props)
+        };
+        return creator;
+      }
     }, selector);
   }
 
@@ -155,7 +162,7 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
                 case "undefined":
                   return valueProxy;
                 case "function":
-                  return mockSetup(context.proxy);
+                  return mockSetup(context.proxy, context);
                 default:
                   return mockSetup;
               }

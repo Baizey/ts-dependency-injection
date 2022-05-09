@@ -1,8 +1,9 @@
-import { Factory, Key } from '../ServiceCollection';
-import { ILifetime } from './ILifetime';
-import { ScopedContext } from '../ServiceProvider';
+import { Factory, Key } from "../ServiceCollection";
+import { ILifetime } from "./ILifetime";
+import { ScopedContext } from "../ServiceProvider";
 
 export class Transient<T, E> implements ILifetime<T, E> {
+  readonly isSingleton = false;
   readonly name: Key<E>;
   factory: Factory<T, E>;
 
@@ -12,7 +13,7 @@ export class Transient<T, E> implements ILifetime<T, E> {
   }
 
   provide(context: ScopedContext<E>) {
-    return this.factory(context.proxy);
+    return this.factory(context.proxy, context);
   }
 
   clone(): ILifetime<T, E> {

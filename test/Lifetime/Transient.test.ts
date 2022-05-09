@@ -1,16 +1,16 @@
-﻿import 'jest';
-import { CircularDependencyError, ScopedContext, ServiceCollection, Transient } from '../../src';
-import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from '../models';
+﻿import "jest";
+import { CircularDependencyError, ScopedContext, ServiceCollection, Transient } from "../../src";
+import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from "../models";
 
 function setup() {
   const services = new ServiceCollection<Provider>();
   services.add(Transient, Alice, (p) => p.alice);
   services.add(Transient, Bob, (p) => p.bob);
   services.add(Transient, Dummy, (provider) => provider.dummy);
-  return { services, context: new ScopedContext<Provider>(services.build().lifetimes) };
+  return { services, context: new ScopedContext<Provider>(services.build()) };
 }
 
-test('Invoke', () => {
+test("Invoke", () => {
   const { services, context } = setup();
   const sut = services.get((p) => p.alice);
 
@@ -18,7 +18,7 @@ test('Invoke', () => {
 
   expect(a).not.toBeUndefined();
 });
-test('Lifetime', () => {
+test("Lifetime", () => {
   const { services, context } = setup();
   const sut = services.get((p) => p.alice);
 
@@ -29,15 +29,15 @@ test('Lifetime', () => {
   expect(b).not.toBeUndefined();
   expect(a).not.toBe(b);
 });
-test('Circular dependency', () => {
+test("Circular dependency", () => {
   const services = new ServiceCollection<CircularProvider>();
-  services.add(Transient, CircularA, 'CircularA');
-  services.add(Transient, CircularB, 'CircularB');
-  const sut = services.get('CircularA');
+  services.add(Transient, CircularA, "CircularA");
+  services.add(Transient, CircularB, "CircularB");
+  const sut = services.get("CircularA");
 
-  const context = new ScopedContext<CircularProvider>(services.build().lifetimes);
+  const context = new ScopedContext<CircularProvider>(services.build());
 
   expect(() => sut?.provide(context)).toThrowError(
-    new CircularDependencyError('CircularB', ['CircularB', 'CircularA']),
+    new CircularDependencyError("CircularB", ["CircularB", "CircularA"])
   );
 });
