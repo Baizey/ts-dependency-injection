@@ -1,4 +1,4 @@
-import { ServiceCollection, ShouldBeMockedDependencyError } from "../../src";
+import { ServiceCollection, ShouldBeMockedDependencyError, SingletonScopedDependencyError } from "../../src";
 import {
   StatefulDependency1,
   StatefulDependency2,
@@ -6,7 +6,6 @@ import {
   StatefulProvider,
   StatefulService
 } from "../models/StatefulProvider";
-import { SingletonScopedDependencyError } from "../../lib";
 
 test("Singleton dependency chain has scope restraints", () => {
   const services = new ServiceCollection<StatefulProvider>();
