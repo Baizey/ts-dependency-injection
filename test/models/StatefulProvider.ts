@@ -1,46 +1,35 @@
-import { Stateful } from "../../src";
+import { ServiceCollection, Stateful } from "../../src";
 
 export type StatefulProvider = {
-  dep1: StatefulDependency1
-  dep2: StatefulDependency2
-  factory: Stateful<void, StatefulFactory>
-  service: StatefulService
+  scoped: StatefulService
+  stateful: Stateful<void, StatefulFactory>
+  singleton: StatefulService
+  transient: StatefulService
 }
 
-export class StatefulDependency2 {
-  call() {
-    return true;
-  }
-}
-
-export class StatefulDependency1 {
-  readonly dep2: StatefulDependency2;
-
-  constructor({ dep2 }: StatefulProvider) {
-    this.dep2 = dep2;
-  }
-
-  call() {
-    return this.dep2.call();
-  }
-}
+export const statefulProvider = (mock?: boolean) => {
+  const services = new ServiceCollection<StatefulProvider>();
+  services.addScoped(StatefulService, e => e.scoped);
+  services.addStateful(StatefulFactory, e => e.stateful);
+  services.addSingleton(StatefulService, e => e.singleton);
+  services.addTransient(StatefulService, e => e.transient);
+  return (mock ? services.buildMock() : services.build()).proxy;
+};
 
 export class StatefulFactory {
-  readonly dep: StatefulDependency1;
+  readonly scoped: StatefulService;
+  private stateful: Stateful<void, StatefulFactory>;
 
-  constructor({ dep1 }: StatefulProvider) {
-    this.dep = dep1;
+  constructor({ stateful, scoped }: StatefulProvider) {
+    this.stateful = stateful;
+    this.scoped = scoped;
   }
 }
 
 export class StatefulService {
-  readonly factory: Stateful<void, StatefulFactory>;
+  readonly stateful: Stateful<void, StatefulFactory>;
 
-  constructor({ factory }: StatefulProvider) {
-    this.factory = factory;
-  }
-
-  create() {
-    return this.factory.create();
+  constructor({ stateful }: StatefulProvider) {
+    this.stateful = stateful;
   }
 }

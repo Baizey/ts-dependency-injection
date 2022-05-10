@@ -9,9 +9,9 @@ import {
   LifetimeConstructor,
   Selector,
   SelectorOptions,
+  Stateful,
   StatefulDependencyConstructor
 } from "./IServiceCollection";
-import { Stateful } from "../types";
 
 export type MockSetup<E> = {
   [key in keyof E]?: Partial<Required<E>[key]> | Factory<E[key], E>;
@@ -19,7 +19,9 @@ export type MockSetup<E> = {
 
 export type RecordCollection<E> = Record<Key<E>, ILifetime<unknown, E>>;
 
+
 export class ServiceCollection<E = any> implements IServiceCollection<E> {
+  private static nextId = 1;
   private readonly lifetimes: RecordCollection<E> = {} as RecordCollection<E>;
 
   replaceSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
@@ -61,13 +63,20 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
   }
 
   addStateful<T, P>(Constructor: StatefulDependencyConstructor<T, E, P>, selector: Selector<Stateful<P, T>, E>): void {
+    const key = ServiceCollection.extractSelector(selector).toString();
     return this.addTransient<Stateful<P, T>>({
       factory: (_, context) => {
-        const lockedTraceContext = context.clone();
-        const creator: Stateful<P, T> = {
-          create: (props: P) => new Constructor(lockedTraceContext.proxy, props)
+        const statefulContext = new ScopedContext(context);
+
+        const singleton = context.lastSingleton;
+        statefulContext.enter({
+          name: `${singleton ? `${String(singleton.name)}:` : ""}${key}#${ServiceCollection.nextId++}`,
+          isSingleton: singleton?.isSingleton ?? false
+        });
+
+        return {
+          create: (props: P) => new Constructor(statefulContext.proxy, props)
         };
-        return creator;
       }
     }, selector);
   }
@@ -157,7 +166,7 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
           get(target, prop: keyof ILifetime<unknown, E>) {
             if (prop !== "provide") return target[prop];
             return (context: ScopedContext<E>) => {
-              if (context.dependencyTracker.depth === 1) return target.provide(context);
+              if (context.depth === 1) return target.provide(context);
               switch (typeof mockSetup) {
                 case "undefined":
                   return valueProxy;

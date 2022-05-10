@@ -13,14 +13,14 @@ export class Scoped<T, E> implements ILifetime<T, E> {
     this.factory = factory;
   }
 
-  provide(provider: ScopedContext<E>) {
+  provide(context: ScopedContext<E>) {
     const {
-      dependencyTracker: { singleton },
+      lastSingleton,
       scope
-    } = provider;
-    if (singleton) throw new SingletonScopedDependencyError(singleton.name, this.name);
+    } = context;
+    if (lastSingleton) throw new SingletonScopedDependencyError(lastSingleton.name, this.name);
 
-    const value = scope[this.name] ?? this.factory(provider.proxy, provider);
+    const value = scope[this.name] ?? this.factory(context.proxy, context);
 
     return (scope[this.name] = value);
   }

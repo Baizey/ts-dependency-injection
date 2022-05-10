@@ -15,8 +15,8 @@ export class Singleton<T, E> implements ILifetime<T, E> {
 
   provide(context: ScopedContext<E>) {
     if (this.value) return this.value;
-    const value = this.factory(context.proxy, context);
-    return (this.value = value);
+    this.value = this.factory(context.proxy, context);
+    return this.value;
   }
 
   clone(): ILifetime<T, E> {
