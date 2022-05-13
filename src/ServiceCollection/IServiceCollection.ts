@@ -10,13 +10,15 @@ export type Selector<T, E> = Key<E> | ((e: SelectorOptions<T, E>) => Key<E>)
 
 export type Stateful<P, T> = { create(props: P): T }
 export type Factory<T, E> = (data: E, provider: ScopedContext<E>) => T
-export type DependencyConstructor<T, E> = { new(props: E): T } | { new(): T }
-export type StatefulDependencyConstructor<T, E, P> = { new(provider: E, props: P): T } | DependencyConstructor<T, E>
+export type DependencyConstructor<T = any, E = any> = { new(props: E): T } | { new(): T }
+export type StatefulDependencyConstructor<T = any, E = any, P = any> =
+	{ new(provider: E, props: P): T }
+	| DependencyConstructor<T, E>
 export type DependencyOptions<T, E> = { factory: Factory<T, E> } | DependencyConstructor<T, E>
 
-export type LifetimeConstructor<T, E> = new (name: Key<E>, factory: Factory<T, E>) => ILifetime<T, E>
+export type LifetimeConstructor<T = any, E = any> = new (name: Key<E>, factory: Factory<T, E>) => ILifetime<T, E>
 
-export interface IServiceCollection<E> {
+export interface IServiceCollection<E = any> {
 	replaceSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void
 	
 	replaceTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void
@@ -49,5 +51,5 @@ export interface IServiceCollection<E> {
 	
 	build(): IServiceProvider<E>
 	
-	buildMock(mock: MockSetup<E>): IServiceProvider<E>
+	buildMock(mock?: MockSetup<E>): IServiceProvider<E>
 }

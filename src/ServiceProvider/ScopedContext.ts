@@ -1,28 +1,24 @@
 import { CircularDependencyError, ExistenceDependencyError } from '../Errors'
 import { DependencyInfo, ILifetime } from '../Lifetime'
-import { Key, Selector, ServiceCollection } from '../ServiceCollection'
+import { Key, Selector } from '../ServiceCollection'
+import { extractSelector, proxyOf } from '../utils'
 import { IServiceProvider } from './IServiceProvider'
 
 export type ProviderScope = Record<Key<any>, any>;
 
-export class ScopedContext<E> implements IServiceProvider<E> {
-	readonly lifetimes: Record<Key<E>, ILifetime<any, E>>
-	readonly proxy: E
-	readonly scope: ProviderScope
+export class ScopedContext<E = any> implements IServiceProvider<E> {
 	private readonly singletons: DependencyInfo[] = []
 	private readonly lookup: Record<Key<any>, DependencyInfo> = {}
 	private readonly ordered: DependencyInfo[] = []
 	
+	readonly lifetimes: Record<Key<E>, ILifetime<any, E>>
+	readonly proxy: E
+	readonly scope: ProviderScope
+	
 	constructor(parent: IServiceProvider<E>) {
-		const self = this
 		this.lifetimes = parent.lifetimes
+		this.proxy = proxyOf(this)
 		this.scope = (parent instanceof ScopedContext) ? parent.scope : {}
-		this.proxy = new Proxy(
-			{},
-			{
-				get: (target, prop: Key<E>) => self.provide(prop),
-			},
-		) as E
 	}
 	
 	get depth(): number {
@@ -56,7 +52,7 @@ export class ScopedContext<E> implements IServiceProvider<E> {
 	}
 	
 	private getLifetime<T>(selector: Selector<T, E>) {
-		const key = ServiceCollection.extractSelector(selector)
+		const key = extractSelector(selector)
 		const lifetime = this.lifetimes[key]
 		if (!lifetime) throw new ExistenceDependencyError(key)
 		return lifetime

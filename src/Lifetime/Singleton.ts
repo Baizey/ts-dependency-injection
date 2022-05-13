@@ -3,10 +3,11 @@ import { ScopedContext } from '../ServiceProvider'
 import { ILifetime } from './ILifetime'
 
 export class Singleton<T, E> implements ILifetime<T, E> {
+	private readonly factory: Factory<T, E>
+	private value?: T
+	
 	readonly isSingleton = true
 	readonly name: Key<E>
-	factory: Factory<T, E>
-	private value?: T
 	
 	constructor(name: Key<E>, factory: Factory<T, E>) {
 		this.name = name

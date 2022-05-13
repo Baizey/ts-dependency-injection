@@ -1,100 +1,75 @@
-import { ServiceCollection, ShouldBeMockedDependencyError } from '../../src'
-import { MockSetup } from '../../src/ServiceCollection/mockUtils'
-import { Alice, Bob, Dummy, Provider } from '../models'
-
-function setup(mock?: MockSetup<Provider>) {
-	const services = new ServiceCollection<Provider>()
-	services.addTransient(Alice, (p) => p.alice)
-	services.addTransient(Bob, (p) => p.bob)
-	services.addTransient(Dummy, (p) => p.dummy)
-	return services.buildMock(mock)
-}
+import { ShouldBeMockedDependencyError } from '../../src'
+import { dummy, UUID } from '../testUtils'
 
 describe('mock', () => {
-	test('Root provided is normal', () => {
-		const mock = {}
-		const provider = setup({ alice: mock })
-		
-		const { alice, bob } = provider.proxy
-		
-		expect(alice).toBeInstanceOf(Alice)
-		expect(bob).toBeInstanceOf(Bob)
+	test('Root is normal, dependencies are mocked', () => {
+		const { bob, alice } = dummy()
+			.singleton('alice')
+			.singleton('bob', ({ alice }) => ({ alice }))
+			.mock()
+		expect(alice.id).toBeTruthy()
+		expect(() => bob.alice.id).toThrowError(new ShouldBeMockedDependencyError('alice', 'id', 'get'))
 	})
 	
 	test('Mock function, succeed', () => {
-		const mock = {
-			getName(): string {
-				return 'NotAlice'
-			},
-		}
-		const spy = jest.spyOn(mock, 'getName')
+		const mock = { func: () => UUID.randomUUID() }
+		const spy = jest.spyOn(mock, 'func')
+		const { bob } = dummy()
+			.singleton('alice')
+			.singleton('bob', ({ alice }) => ({ alice }))
+			.mock({ alice: mock })
 		
-		const provider = setup({ alice: mock })
-		
-		const { bob } = provider.proxy
-		
-		const alice = bob.alice
-		expect(alice.getName()).toBe('NotAlice')
+		expect(bob.alice.func()).toBeTruthy()
 		expect(spy).toBeCalledTimes(1)
 	})
 	
 	test('Forget mock function, throw error', () => {
-		const provider = setup()
-		
-		const { bob } = provider.proxy
-		
-		const alice = bob.alice
-		
-		expect(() => alice.getName()).toThrowError(new ShouldBeMockedDependencyError('alice', 'getName', 'get'))
+		const { bob } = dummy()
+			.singleton('alice')
+			.singleton('bob', ({ alice }) => ({ alice }))
+			.mock()
+		expect(() => bob.alice.func()).toThrowError(new ShouldBeMockedDependencyError('alice', 'func', 'get'))
 	})
 	
 	test('Mock get, succeed', () => {
-		const mock = {
-			get getTest() {
-				return undefined
-			},
-		}
-		const spy = jest.spyOn(mock, 'getTest', 'get')
+		const mock = { get getter() { return UUID.randomUUID() } }
+		const spy = jest.spyOn(mock, 'getter', 'get')
+		const { bob } = dummy()
+			.singleton('alice')
+			.singleton('bob', ({ alice }) => ({ alice }))
+			.mock({ alice: mock })
 		
-		const provider = setup({ alice: mock })
-		
-		const { bob } = provider.proxy
-		
-		const alice = bob.alice
-		expect(alice.getTest).toBeUndefined()
+		expect(bob.alice.getter).toBeTruthy()
 		expect(spy).toBeCalledTimes(1)
 	})
 	
 	test('Forget mock get, throw error', () => {
-		const provider = setup()
-		
-		const { bob } = provider.proxy
-		
-		const alice = bob.alice
-		expect(() => alice.getTest).toThrowError(new ShouldBeMockedDependencyError('alice', 'getTest', 'get'))
+		const { bob } = dummy()
+			.singleton('alice')
+			.singleton('bob', ({ alice }) => ({ alice }))
+			.mock()
+		expect(() => bob.alice.getter).toThrowError(new ShouldBeMockedDependencyError('alice', 'getter', 'get'))
 	})
 	
 	test('Mock set, succeed setting', () => {
-		const mock = new Alice()
-		const spy = jest.spyOn(mock, 'setTest', 'set')
+		// noinspection JSUnusedLocalSymbols
+		const mock = { set setter(v: any) { } }
+		const spy = jest.spyOn(mock, 'setter', 'set')
+		const { bob } = dummy()
+			.singleton('alice')
+			.singleton('bob', ({ alice }) => ({ alice }))
+			.mock({ alice: mock })
 		
-		const provider = setup({ alice: mock })
+		bob.alice.setter = 1
 		
-		const { bob } = provider.proxy
-		
-		const alice = bob.alice
-		alice.setTest = undefined
 		expect(spy).toBeCalledTimes(1)
 	})
 	
 	test('Forget mock set, throw error', () => {
-		const provider = setup()
-		
-		const { bob } = provider.proxy
-		
-		const alice = bob.alice
-		expect(() => {
-			alice.setTest = undefined
-		}).toThrowError(new ShouldBeMockedDependencyError('alice', 'setTest', 'set'))
+		const { bob } = dummy()
+			.singleton('alice')
+			.singleton('bob', ({ alice }) => ({ alice }))
+			.mock()
+		expect(() => bob.alice.setter = 1).toThrowError(new ShouldBeMockedDependencyError('alice', 'setter', 'set'))
 	})
 })

@@ -4,9 +4,9 @@ import { ScopedContext } from '../ServiceProvider'
 import { ILifetime } from './ILifetime'
 
 export class Scoped<T, E> implements ILifetime<T, E> {
-	readonly isSingleton = false
+	private readonly factory: Factory<T, E>
+	
 	readonly name: Key<E>
-	factory: Factory<T, E>
 	
 	constructor(name: Key<E>, factory: Factory<T, E>) {
 		this.name = name
@@ -14,14 +14,9 @@ export class Scoped<T, E> implements ILifetime<T, E> {
 	}
 	
 	provide(context: ScopedContext<E>) {
-		const {
-			lastSingleton,
-			scope,
-		} = context
+		const { lastSingleton, scope, proxy } = context
 		if (lastSingleton) throw new SingletonScopedDependencyError(lastSingleton.name, this.name)
-		
-		scope[this.name] = scope[this.name] ?? this.factory(context.proxy, context)
-		
+		scope[this.name] = scope[this.name] ?? this.factory(proxy, context)
 		return scope[this.name]
 	}
 	

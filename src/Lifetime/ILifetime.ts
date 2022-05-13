@@ -1,4 +1,4 @@
-import { Factory, Key } from '../ServiceCollection'
+import { Key } from '../ServiceCollection'
 import { ScopedContext } from '../ServiceProvider'
 
 export interface DependencyInfo<E = any> {
@@ -6,9 +6,7 @@ export interface DependencyInfo<E = any> {
 	readonly isSingleton?: boolean
 }
 
-export interface ILifetime<T, E> extends DependencyInfo<E> {
-	factory: Factory<T, E>
-	
+export interface ILifetime<T = any, E = any> extends DependencyInfo<E> {
 	provide(context: ScopedContext<E>): T
 	
 	clone(): ILifetime<T, E>

@@ -1,14 +1,15 @@
 import { DependencyErrorType, DuplicateDependencyError } from '../Errors'
 import { ILifetime, Scoped, Singleton, Transient } from '../Lifetime'
 import { IServiceProvider, ProviderScope, ScopedContext, ServiceProvider } from '../ServiceProvider'
+import { extractSelector } from '../utils'
 import {
+	DependencyConstructor,
 	DependencyOptions,
 	Factory,
 	IServiceCollection,
 	Key,
 	LifetimeConstructor,
 	Selector,
-	SelectorOptions,
 	Stateful,
 	StatefulDependencyConstructor,
 } from './IServiceCollection'
@@ -17,20 +18,10 @@ import { MockSetup, proxyLifetimes } from './mockUtils'
 export type RecordCollection<E> = Record<Key<E>, ILifetime<unknown, E>>;
 
 export class ServiceCollection<E = any> implements IServiceCollection<E> {
-	private readonly lifetimes: RecordCollection<E> = {} as RecordCollection<E>
+	private readonly lifetimes: RecordCollection<E>
 	
-	static extractSelector<T, E>(options: Selector<T, E>): Key<E> {
-		switch (typeof options) {
-			case 'function':
-				const proxy = new Proxy({}, { get: (t, p) => p.toString() }) as SelectorOptions<T, E>
-				return options(proxy)
-			case 'symbol':
-				return options.toString() as Key<E>
-			case 'string':
-				return options
-			default:
-				throw new Error(`Name selector could not match anything`)
-		}
+	constructor(other?: ServiceCollection) {
+		this.lifetimes = other?.lifetimes ?? {}
 	}
 	
 	replaceSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
@@ -66,14 +57,13 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
 		try {
 			this.add(Lifetime, dependency, selector)
 		} catch (e) {
-			const type = (e as DuplicateDependencyError).type
-			if (type !== DependencyErrorType.Duplicate) throw e
+			if ((e as DuplicateDependencyError).type !== DependencyErrorType.Duplicate) throw e
 		}
 	}
 	
 	addStateful<T, P>(Constructor: StatefulDependencyConstructor<T, E, P>,
 	                  selector: Selector<Stateful<P, T>, E>): void {
-		const key = ServiceCollection.extractSelector(selector).toString()
+		const key = extractSelector(selector).toString()
 		const last = { name: `${key}@constructor` }
 		
 		function next(scope: ProviderScope): number {
@@ -119,16 +109,22 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
 		this.add(Scoped, options, selector)
 	}
 	
+	addMultiple(Lifetime: LifetimeConstructor,
+	            dependencies: Partial<{ [key in keyof E]: DependencyConstructor<E[key], E> }>) {
+		Object.entries(dependencies).map(([key, value]) => ({
+			key: key as Key<E>,
+			value: value as DependencyConstructor,
+		})).forEach(({ key, value }) => this.add(Lifetime, value, key))
+	}
+	
 	add<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>): void {
-		const name = ServiceCollection.extractSelector(selector)
+		const name = extractSelector(selector)
 		if (name in this.lifetimes) throw new DuplicateDependencyError(name)
-		const factory = this.extractDependency(dependency)
-		this.lifetimes[name] = new Lifetime(name, factory)
+		this.lifetimes[name] = new Lifetime(name, this.extractFactory(dependency))
 	}
 	
 	get<T>(selector: Selector<T, E>): ILifetime<T, E> | undefined {
-		const key = ServiceCollection.extractSelector(selector)
-		return this.lifetimes[key] as ILifetime<T, E>
+		return this.lifetimes[extractSelector(selector)] as ILifetime<T, E>
 	}
 	
 	remove<T>(selector: Selector<T, E>): ILifetime<T, E> | undefined {
@@ -138,30 +134,25 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
 	}
 	
 	build(): IServiceProvider<E> {
-		const lifetimes = this.cloneLifetimes()
-		return new ServiceProvider<E>(lifetimes)
+		return new ServiceProvider<E>(this.cloneLifetimes())
 	}
 	
 	buildMock(mock: MockSetup<E> = {}): IServiceProvider<E> {
-		const provider = this.build()
-		proxyLifetimes(provider.lifetimes, mock || {})
-		return provider
+		return proxyLifetimes(this, mock)
 	}
 	
-	private extractDependency<T>(Option: DependencyOptions<T, E>): Factory<T, E> {
-		if (typeof Option === 'function') return (p) => new Option(p)
-		return Option.factory
+	private extractFactory<T>(Option: DependencyOptions<T, E>): Factory<T, E> {
+		return typeof Option === 'function'
+			? p => new Option(p)
+			: Option.factory
 	}
 	
 	private cloneLifetimes(): RecordCollection<E> {
-		return Object.entries(this.lifetimes)
-			.map(([key, value]) => ({
-				name: key as Key<E>,
-				lifetime: (value as ILifetime<unknown, E>).clone(),
-			}))
-			.reduce((a, { name, lifetime }) => {
-				a[name] = lifetime
-				return a
+		return Object.entries<ILifetime<unknown, E>>(this.lifetimes)
+			.map(([key, value]) => [key, value.clone()] as [Key<E>, ILifetime<unknown, E>])
+			.reduce((acc, [key, value]) => {
+				acc[key] = value
+				return acc
 			}, {} as RecordCollection<E>)
 	}
 }

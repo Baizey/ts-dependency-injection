@@ -1,43 +1,30 @@
 ﻿import 'jest'
-import { CircularDependencyError, ScopedContext, ServiceCollection, Transient } from '../../src'
-import { Alice, Bob, CircularA, CircularB, CircularProvider, Dummy, Provider } from '../models'
+import { Transient } from '../../src'
+import { Context, Lifetime, propertyOfLifetime, UUID } from '../testUtils'
 
-function setup() {
-	const services = new ServiceCollection<Provider>()
-	services.add(Transient, Alice, (p) => p.alice)
-	services.add(Transient, Bob, (p) => p.bob)
-	services.add(Transient, Dummy, (provider) => provider.dummy)
-	return { services, context: new ScopedContext<Provider>(services.build()) }
-}
+describe(propertyOfLifetime.provide, () => {
+	test('Never returns the same, even if same context', () => {
+		const sut = Lifetime(Transient)
+		const context = Context()
+		
+		const expected = sut.provide(context)
+		const actual = sut.provide(context)
+		
+		expect(expected).not.toEqual(actual)
+	})
+	
+	test('Ignores anything in scoped', () => {
+		const notExpected = UUID.randomUUID()
+		const context = Context()
+		const sut = Lifetime(Transient)
+		context.scope[sut.name] = notExpected
+		
+		const actual = sut.provide(context)
+		
+		expect(actual).not.toEqual(notExpected)
+	})
+})
 
-test('Invoke', () => {
-	const { services, context } = setup()
-	const sut = services.get((p) => p.alice)
-	
-	const a = sut?.provide(context)
-	
-	expect(a).not.toBeUndefined()
-})
-test('Lifetime', () => {
-	const { services, context } = setup()
-	const sut = services.get((p) => p.alice)
-	
-	const a = sut?.provide(context)
-	const b = sut?.provide(context)
-	
-	expect(a).not.toBeUndefined()
-	expect(b).not.toBeUndefined()
-	expect(a).not.toBe(b)
-})
-test('Circular dependency', () => {
-	const services = new ServiceCollection<CircularProvider>()
-	services.add(Transient, CircularA, 'CircularA')
-	services.add(Transient, CircularB, 'CircularB')
-	const sut = services.get('CircularA')
-	
-	const context = new ScopedContext<CircularProvider>(services.build())
-	
-	expect(() => sut?.provide(context)).toThrowError(
-		new CircularDependencyError('CircularB', ['CircularB', 'CircularA']),
-	)
+describe(propertyOfLifetime.isSingleton, () => {
+	test('should be false', () => expect(Lifetime(Transient).isSingleton).toBeFalsy())
 })
