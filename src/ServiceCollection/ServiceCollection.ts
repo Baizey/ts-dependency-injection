@@ -1,6 +1,6 @@
 import { DuplicateDependencyError } from '../Errors'
 import { ILifetime, Lifetime, Scoped, Singleton, Transient } from '../Lifetime'
-import { IServiceProvider, ProviderScope, ServiceProvider } from '../ServiceProvider'
+import { IServiceProvider, ProviderScope, ScopedContext, ServiceProvider } from '../ServiceProvider'
 import { extractSelector } from '../utils'
 import { MockSetup, proxyLifetimes } from './mockUtils'
 import {
@@ -12,7 +12,6 @@ import {
 	Selector,
 	Stateful,
 	StatefulDependencyOptions,
-	StatefulFactory,
 } from './types'
 
 export class ServiceCollection<E = {}> {
@@ -27,10 +26,13 @@ export class ServiceCollection<E = {}> {
 	
 	addStateful<T, KE, P>(
 		name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
-		Dependency: StatefulDependencyOptions<T, P, E>,
+		Dependency: StatefulDependencyOptions<T, P, { [key in keyof KE]: Stateful<P, T> } & E>,
 	): ServiceCollection<{ [key in keyof KE]: Stateful<P, T> } & E> {
 		const last = Lifetime.dummy(`${name}@constructor`)
-		const factory = this.extractStatefulFactory(Dependency)
+		
+		const factory = typeof Dependency === 'function'
+			? (provider: { [key in keyof KE]: Stateful<P, T> } & E, props: P) => new Dependency(provider, props)
+			: Dependency.factory
 		
 		function next(scope: ProviderScope): number {
 			scope[name] = scope[name] || 1
@@ -38,7 +40,8 @@ export class ServiceCollection<E = {}> {
 		}
 		
 		return this.add<Stateful<P, T>, KE>(Transient, name, {
-			factory: (_, context) => {
+			factory: (_, ignoredContext) => {
+				const context = ignoredContext as ScopedContext<{ [key in keyof KE]: Stateful<P, T> } & E>
 				const { isSingleton, name: lastName } = context.lastSingleton ?? {}
 				const singleton = lastName ? `${String(lastName)}@` : ''
 				const track = Lifetime.dummy(`${singleton}${name}@creator#${next(context.scope)}`, isSingleton)
@@ -92,12 +95,6 @@ export class ServiceCollection<E = {}> {
 	
 	buildMock(mock: MockSetup<E> = {}): IServiceProvider<E> {
 		return proxyLifetimes(this, mock)
-	}
-	
-	private extractStatefulFactory<T, P>(Option: StatefulDependencyOptions<T, P, E>): StatefulFactory<T, P, E> {
-		return typeof Option === 'function'
-			? (provider, props) => new Option(provider, props)
-			: Option.factory
 	}
 	
 	private extractFactory<T>(Option: DependencyOptions<T, E>): Factory<T, E> {

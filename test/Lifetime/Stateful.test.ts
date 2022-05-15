@@ -1,9 +1,25 @@
-import { CircularDependencyError, propertyOf, SingletonScopedDependencyError, Stateful } from '../../src'
+import { CircularDependencyError, propertyOf, Services, SingletonScopedDependencyError, Stateful } from '../../src'
 import { dummy } from '../testUtils'
 
 const propertyOfStateful = propertyOf<Stateful<any, any>>()
 
+class A {
+	readonly a: Stateful<null, A>
+	readonly props: null
+	
+	constructor({ a }: { a: Stateful<null, A> }, props: null) {
+		this.a = a
+		this.props = props
+	}
+}
+
 describe(propertyOfStateful.create, () => {
+	
+	test('Stateful factory can depend on itself', () => {
+		const sut = Services().addStateful('a', A).build().proxy
+		expect(sut.a.create(null).a.create(null))
+	})
+	
 	test('Using circular factory in constructor gives circular error', () => {
 		const { circular } = dummy()
 			.stateful('circular', ({ circular }) => { circular.create() })
