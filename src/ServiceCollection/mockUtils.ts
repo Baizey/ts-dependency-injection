@@ -1,14 +1,15 @@
 import { ShouldBeMockedDependencyError } from '../Errors'
 import { ILifetime } from '../Lifetime'
 import { ScopedContext } from '../ServiceProvider'
-import { PropertyOf, propertyOf } from '../utils'
-import { Factory, IServiceCollection, Key } from './IServiceCollection'
+import { propertyOf } from '../utils'
+import { ServiceCollection } from './ServiceCollection'
+import { Factory, Key } from './types'
 
 export type MockSetup<E> = {
 	[key in keyof E]?: Partial<E[key]> | Factory<Partial<E[key]>, E>;
 };
 
-export function proxyLifetimes<E>(services: IServiceCollection<E>, mock: MockSetup<E>) {
+export function proxyLifetimes<E>(services: ServiceCollection<E>, mock: MockSetup<E>) {
 	const provider = services.build()
 	Object.values<ILifetime<unknown, E>>(provider.lifetimes)
 		.forEach((lifetime) => {
@@ -19,7 +20,7 @@ export function proxyLifetimes<E>(services: IServiceCollection<E>, mock: MockSet
 	return provider
 }
 
-const provide = (propertyOf as PropertyOf<ILifetime>).provide
+const provide = propertyOf<ILifetime>().provide
 
 export function proxyLifetime<E>(lifetime: ILifetime<unknown, E>, mock: MockSetup<E>[Key<E>] | undefined) {
 	const name = lifetime.name.toString()

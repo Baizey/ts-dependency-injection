@@ -1,9 +1,8 @@
-// noinspection JSUnusedLocalSymbols
-
 import { v4 } from 'uuid'
 import {
 	ILifetime,
 	LifetimeConstructor,
+	propertyOf,
 	Scoped,
 	ScopedContext,
 	ServiceCollection,
@@ -12,7 +11,6 @@ import {
 	Transient,
 } from '../src'
 import { MockSetup } from '../src/ServiceCollection/mockUtils'
-import { PropertyOf, propertyOf } from '../src/utils'
 
 class NextNumber {
 	private static nextNumber = 1
@@ -21,13 +19,12 @@ class NextNumber {
 }
 
 export const next = () => NextNumber.next()
-export const propertyOfLifetime = propertyOf as PropertyOf<ILifetime>
+export const propertyOfLifetime = propertyOf<ILifetime>()
 export const UUID = { randomUUID(): string { return v4() } }
 
 export const Lifetime = (Constructor: LifetimeConstructor) =>
 	new Constructor(UUID.randomUUID(), () => UUID.randomUUID())
 
-export const Services = <T = any>() => new ServiceCollection<T>()
 export const Provider = () => new ServiceProvider({})
 export const Context = () => new ScopedContext(Provider())
 
@@ -52,7 +49,7 @@ type Recursive<Current> =
 	& { create: () => Recursive<Current> } & InnerBase
 type OnCreation<E> = (e: Recursive<E>) => Partial<Recursive<E>> | undefined | null | void
 
-function createClass<Current>(onCreation: OnCreation<Current>) {
+function createClass<Current>(onCreation?: OnCreation<Current>) {
 	return class Inner extends InnerBase {
 		constructor(provider: Recursive<Current>) {
 			super()
@@ -65,21 +62,13 @@ function createClass<Current>(onCreation: OnCreation<Current>) {
 	}
 }
 
-function addLifetime<Current>(services: ServiceCollection,
-                              Constructor: LifetimeConstructor,
-                              name: Key<Current>,
-                              onCreation: OnCreation<Current>): ServiceCollection<Current> {
-	const Inner = createClass(onCreation)
-	services.add(Constructor, Inner, name)
-	return services
-}
-
 type Key<E> = string & keyof E
 
+// noinspection JSUnusedLocalSymbols
 class Dummy<Current = {}> {
-	private readonly services: ServiceCollection
+	private readonly services: ServiceCollection<Current>
 	
-	constructor(services: ServiceCollection = new ServiceCollection()) {
+	constructor(services: ServiceCollection<Current> = new ServiceCollection<Current>()) {
 		this.services = services
 	}
 	
@@ -88,50 +77,61 @@ class Dummy<Current = {}> {
 	}
 	
 	public build(): Recursive<Current> {
+		// @ts-ignore
 		return this.services.build().proxy
 	}
 	
 	public mock(mock: MockSetup<Recursive<Current>> = {}): Recursive<Current> {
+		// @ts-ignore
 		return this.services.buildMock(mock).proxy
 	}
 	
-	public add<Add extends { [key: string | symbol]: any }>(
+	add<KE>(
 		Lifetime: LifetimeConstructor,
-		name: Key<Add>,
-		onCreation: OnCreation<Add & Current> = () => {},
-		expected?: Key<Add>[] | Key<Add>) {
-		addLifetime<Add & Current>(this.services, Lifetime, name, onCreation)
-		return new Dummy<Current & Add>(this.services)
+		name: keyof KE & Key<KE>,
+		Dependency?: OnCreation<Current & { [key in keyof KE]: Recursive<Current> }>,
+		extra?: keyof KE & Key<KE> | (keyof KE & Key<KE>)[],
+	): Dummy<{ [key in keyof KE]: Recursive<Current> } & Current> {
+		const Constructor = createClass(Dependency)
+		// @ts-ignore
+		const next = this.services.add<Recursive<Current>, KE>(Lifetime, name, Constructor)
+		return new Dummy<{ [key in keyof KE]: Recursive<Current> } & Current>(next)
 	}
 	
-	public singleton<Add extends { [key: string | symbol]: any }>(
-		name: Key<Add>,
-		onCreation: OnCreation<Add & Current> = () => {},
-		expected?: Key<Add>[] | Key<Add>) {
-		return this.add(Singleton, name, onCreation)
+	singleton<KE>(
+		name: keyof KE & Key<KE>,
+		Dependency?: OnCreation<Current & { [key in keyof KE]: Recursive<Current> }>,
+		extra?: keyof KE & Key<KE> | (keyof KE & Key<KE>)[],
+	): Dummy<{ [key in keyof KE]: Recursive<Current> } & Current> {
+		return this.add(Singleton, name, Dependency)
 	}
 	
-	public scoped<Add extends { [key: string | symbol]: any }>(
-		name: Key<Add>,
-		onCreation: OnCreation<Add & Current> = () => {},
-		expected?: Key<Add>[] | Key<Add>) {
-		return this.add(Scoped, name, onCreation)
+	scoped<KE>(
+		name: keyof KE & Key<KE>,
+		Dependency?: OnCreation<Current & { [key in keyof KE]: Recursive<Current> }>,
+		extra?: keyof KE & Key<KE> | (keyof KE & Key<KE>)[],
+	): Dummy<{ [key in keyof KE]: Recursive<Current> } & Current> {
+		return this.add(Scoped, name, Dependency)
 	}
 	
-	public transient<Add extends { [key: string | symbol]: any }>(
-		name: Key<Add>,
-		onCreation: OnCreation<Add & Current> = () => {},
-		expected?: Key<Add>[] | Key<Add>) {
-		return this.add(Transient, name, onCreation)
+	transient<KE>(
+		name: keyof KE & Key<KE>,
+		Dependency?: OnCreation<Current & { [key in keyof KE]: Recursive<Current> }>,
+		extra?: keyof KE & Key<KE> | (keyof KE & Key<KE>)[],
+	): Dummy<{ [key in keyof KE]: Recursive<Current> } & Current> {
+		return this.add(Transient, name, Dependency)
 	}
 	
-	public stateful<Add extends { [key: string | symbol]: any }>(
-		name: Key<Add>,
-		onCreation: OnCreation<Add & Current> = () => {},
-		expected?: Key<Add>[] | Key<Add>) {
-		const Constructor = createClass(onCreation)
-		this.services.addStateful(Constructor, name)
-		return new Dummy<Add & Current>(this.services)
+	stateful<KE>(
+		name: keyof KE & Key<KE>,
+		Dependency?: OnCreation<Current & { [key in keyof KE]: Recursive<Current> }>,
+		extra?: keyof KE & Key<KE> | (keyof KE & Key<KE>)[],
+	): Dummy<{ [key in keyof KE]: Recursive<Current> } & Current> {
+		const Constructor = createClass(Dependency)
+		// @ts-ignore
+		const next = this.services.addStateful<Recursive<Current>, void, KE>(name, Constructor)
+		// @ts-ignore
+		return new Dummy<{ [key in keyof KE]: Recursive<Current> } & Current>(next)
 	}
 }
 

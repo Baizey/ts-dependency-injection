@@ -1,2 +1,2 @@
 export * from './ServiceCollection'
-export * from './IServiceCollection'
+export * from './types'

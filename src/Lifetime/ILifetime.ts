@@ -11,3 +11,18 @@ export interface ILifetime<T = any, E = any> extends DependencyInfo<E> {
 	
 	clone(): ILifetime<T, E>
 }
+
+export class Lifetime {
+	
+	// noinspection JSUnusedLocalSymbols
+	private constructor() {}
+	
+	static dummy<E = any>(name: Key<E>, isSingleton?: boolean): ILifetime<null, E> {
+		return {
+			clone() { return this },
+			provide() { return null },
+			name,
+			isSingleton,
+		}
+	}
+}

@@ -1,136 +1,89 @@
-import { DependencyErrorType, DuplicateDependencyError } from '../Errors'
-import { ILifetime, Scoped, Singleton, Transient } from '../Lifetime'
-import { IServiceProvider, ProviderScope, ScopedContext, ServiceProvider } from '../ServiceProvider'
+import { DuplicateDependencyError } from '../Errors'
+import { ILifetime, Lifetime, Scoped, Singleton, Transient } from '../Lifetime'
+import { IServiceProvider, ProviderScope, ServiceProvider } from '../ServiceProvider'
 import { extractSelector } from '../utils'
+import { MockSetup, proxyLifetimes } from './mockUtils'
 import {
-	DependencyConstructor,
 	DependencyOptions,
 	Factory,
-	IServiceCollection,
 	Key,
+	LifetimeCollection,
 	LifetimeConstructor,
 	Selector,
 	Stateful,
-	StatefulDependencyConstructor,
-} from './IServiceCollection'
-import { MockSetup, proxyLifetimes } from './mockUtils'
+	StatefulDependencyOptions,
+	StatefulFactory,
+} from './types'
 
-export type RecordCollection<E> = Record<Key<E>, ILifetime<unknown, E>>;
-
-export class ServiceCollection<E = any> implements IServiceCollection<E> {
-	private readonly lifetimes: RecordCollection<E>
+export class ServiceCollection<E = {}> {
+	private readonly self: ServiceCollection<any>
+	private readonly lifetimes: LifetimeCollection
 	
-	constructor(other?: ServiceCollection) {
+	constructor(other?: ServiceCollection, lifetime?: ILifetime<any, E>) {
+		this.self = this
 		this.lifetimes = other?.lifetimes ?? {}
+		if (lifetime) this.lifetimes[lifetime.name] = lifetime
 	}
 	
-	replaceSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
-		this.replace(Singleton, options, selector)
-	}
-	
-	replaceTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
-		this.replace(Transient, options, selector)
-	}
-	
-	replaceScoped<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
-		this.replace(Scoped, options, selector)
-	}
-	
-	replace<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>) {
-		this.remove(selector)
-		this.add(Lifetime, dependency, selector)
-	}
-	
-	tryAddSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
-		this.tryAdd(Singleton, options, selector)
-	}
-	
-	tryAddTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
-		this.tryAdd(Transient, options, selector)
-	}
-	
-	tryAddScoped<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>) {
-		this.tryAdd(Scoped, options, selector)
-	}
-	
-	tryAdd<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>) {
-		try {
-			this.add(Lifetime, dependency, selector)
-		} catch (e) {
-			if ((e as DuplicateDependencyError).type !== DependencyErrorType.Duplicate) throw e
-		}
-	}
-	
-	addStateful<T, P>(Constructor: StatefulDependencyConstructor<T, E, P>,
-	                  selector: Selector<Stateful<P, T>, E>): void {
-		const key = extractSelector(selector).toString()
-		const last = { name: `${key}@constructor` }
+	addStateful<T, KE, P>(
+		name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
+		Dependency: StatefulDependencyOptions<T, P, E>,
+	): ServiceCollection<{ [key in keyof KE]: Stateful<P, T> } & E> {
+		const last = Lifetime.dummy(`${name}@constructor`)
+		const factory = this.extractStatefulFactory(Dependency)
 		
 		function next(scope: ProviderScope): number {
-			scope[key] = scope[key] || 1
-			return scope[key]++
+			scope[name] = scope[name] || 1
+			return scope[name]++
 		}
 		
-		return this.addTransient<Stateful<P, T>>({
-			factory: (_, original) => {
-				const stateful = new ScopedContext(original)
-				const { isSingleton, name } = original.lastSingleton ?? {}
-				const singleton = name ? `${String(name)}@` : ''
-				const track = {
-					name: `${singleton}${key}@creator#${next(original.scope)}`,
-					isSingleton,
-				}
+		return this.add<Stateful<P, T>, KE>(Transient, name, {
+			factory: (_, context) => {
+				const { isSingleton, name: lastName } = context.lastSingleton ?? {}
+				const singleton = lastName ? `${String(lastName)}@` : ''
+				const track = Lifetime.dummy(`${singleton}${name}@creator#${next(context.scope)}`, isSingleton)
 				
 				return {
 					create: (props: P) => {
-						const inParent = original.depth
-						const context = inParent ? original : stateful
-						if (inParent) context.enter(last)
-						context.enter(track)
-						const result = new Constructor(context.proxy, props)
-						context.leave(track)
-						if (inParent) context.leave(last)
-						return result
+						const lifetimes = [context.depth && last, track].filter(e => e) as ILifetime[]
+						return context.enter(lifetimes, () => factory(context.proxy, props, context))
 					},
 				}
 			},
-		}, selector)
+		})
 	}
 	
-	addSingleton<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void {
-		this.add(Singleton, options, selector)
+	addSingleton<T, KE>(name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
+	                    Dependency: DependencyOptions<T, E>) {
+		return this.add<T, KE>(Singleton, name, Dependency)
 	}
 	
-	addTransient<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void {
-		this.add(Transient, options, selector)
+	addScoped<T, KE>(name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
+	                 Dependency: DependencyOptions<T, E>) {
+		return this.add<T, KE>(Scoped, name, Dependency)
 	}
 	
-	addScoped<T>(options: DependencyOptions<T, E>, selector: Selector<T, E>): void {
-		this.add(Scoped, options, selector)
+	addTransient<T, KE>(name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
+	                    Dependency: DependencyOptions<T, E>) {
+		return this.add<T, KE>(Transient, name, Dependency)
 	}
 	
-	addMultiple(Lifetime: LifetimeConstructor,
-	            dependencies: Partial<{ [key in keyof E]: DependencyConstructor<E[key], E> }>) {
-		Object.entries(dependencies).map(([key, value]) => ({
-			key: key as Key<E>,
-			value: value as DependencyConstructor,
-		})).forEach(({ key, value }) => this.add(Lifetime, value, key))
-	}
-	
-	add<T>(Lifetime: LifetimeConstructor<T, E>, dependency: DependencyOptions<T, E>, selector: Selector<T, E>): void {
-		const name = extractSelector(selector)
+	add<T, KE>(Lifetime: LifetimeConstructor,
+	           name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
+	           Dependency: DependencyOptions<T, E>) {
 		if (name in this.lifetimes) throw new DuplicateDependencyError(name)
-		this.lifetimes[name] = new Lifetime(name, this.extractFactory(dependency))
+		return new ServiceCollection<{ [key in keyof KE]: T } & E>(
+			this.self,
+			new Lifetime(name, this.extractFactory(Dependency)))
 	}
 	
 	get<T>(selector: Selector<T, E>): ILifetime<T, E> | undefined {
 		return this.lifetimes[extractSelector(selector)] as ILifetime<T, E>
 	}
 	
-	remove<T>(selector: Selector<T, E>): ILifetime<T, E> | undefined {
-		const result = this.get(selector)
-		if (result) delete this.lifetimes[result.name]
-		return result
+	remove<T, KE>(selector: Selector<T, E, KE>) {
+		delete this.lifetimes[extractSelector(selector)]
+		return new ServiceCollection<Omit<E, keyof KE>>(this.self)
 	}
 	
 	build(): IServiceProvider<E> {
@@ -141,18 +94,24 @@ export class ServiceCollection<E = any> implements IServiceCollection<E> {
 		return proxyLifetimes(this, mock)
 	}
 	
-	private extractFactory<T>(Option: DependencyOptions<T, E>): Factory<T, E> {
+	private extractStatefulFactory<T, P>(Option: StatefulDependencyOptions<T, P, E>): StatefulFactory<T, P, E> {
 		return typeof Option === 'function'
-			? p => new Option(p)
+			? (provider, props) => new Option(provider, props)
 			: Option.factory
 	}
 	
-	private cloneLifetimes(): RecordCollection<E> {
+	private extractFactory<T>(Option: DependencyOptions<T, E>): Factory<T, E> {
+		return typeof Option === 'function'
+			? provider => new Option(provider)
+			: Option.factory
+	}
+	
+	private cloneLifetimes(): LifetimeCollection<E> {
 		return Object.entries<ILifetime<unknown, E>>(this.lifetimes)
 			.map(([key, value]) => [key, value.clone()] as [Key<E>, ILifetime<unknown, E>])
 			.reduce((acc, [key, value]) => {
 				acc[key] = value
 				return acc
-			}, {} as RecordCollection<E>)
+			}, {} as LifetimeCollection)
 	}
 }

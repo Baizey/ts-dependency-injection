@@ -1,9 +1,13 @@
-import { Key, Selector } from './ServiceCollection'
+import { Key, Selector, SelectorOptions, ServiceCollection } from './ServiceCollection'
 import { IServiceProvider } from './ServiceProvider'
 
 export type PropertyOf<E> = Required<{ [key in keyof E]: key & Key<E> }>
 
-export const propertyOf = new Proxy({}, { get: (_, p) => p }) as any
+export const Services = <T = {}>() => new ServiceCollection<T>()
+
+const _propertyOf = new Proxy({}, { get: (_, p) => p }) as any
+
+export const propertyOf = <T>() => _propertyOf as PropertyOf<T>
 
 export const proxyOf = <E>(self: IServiceProvider<E>) =>
 	new Proxy(self, { get: (t, p: Key<E>) => t.provide(p) }) as unknown as E
@@ -11,7 +15,7 @@ export const proxyOf = <E>(self: IServiceProvider<E>) =>
 export function extractSelector<T, E>(options: Selector<T, E>): Key<E> {
 	switch (typeof options) {
 		case 'function':
-			return options(propertyOf)
+			return options(propertyOf<SelectorOptions<T, E>>())
 		case 'symbol':
 		case 'string':
 			return options

@@ -42,8 +42,8 @@ describe(SingletonScopedDependencyError.name, () => {
 	test('fail providing if in scope with a singleton', () => {
 		const context = Context()
 		const singleton = Lifetime(Singleton)
-		context.enter(singleton)
 		const sut = Lifetime(Scoped)
-		expect(() => sut.provide(context)).toThrowError(new SingletonScopedDependencyError(singleton.name, sut.name))
+		expect(() => context.enterOnce(singleton, () => sut.provide(context)))
+			.toThrowError(new SingletonScopedDependencyError(singleton.name, sut.name))
 	})
 })

@@ -1,13 +1,7 @@
-import {
-	CircularDependencyError,
-	ShouldBeMockedDependencyError,
-	SingletonScopedDependencyError,
-	Stateful,
-} from '../../src'
-import { PropertyOf, propertyOf } from '../../src/utils'
+import { CircularDependencyError, propertyOf, SingletonScopedDependencyError, Stateful } from '../../src'
 import { dummy } from '../testUtils'
 
-const propertyOfStateful = propertyOf as PropertyOf<Stateful<any, any>>
+const propertyOfStateful = propertyOf<Stateful<any, any>>()
 
 describe(propertyOfStateful.create, () => {
 	test('Using circular factory in constructor gives circular error', () => {
@@ -37,23 +31,5 @@ describe(propertyOfStateful.create, () => {
 			.build()
 		expect(transient.stateful.create())
 			.toBeTruthy()
-	})
-	
-	test('Stateful instance should be given mocked dependencies', () => {
-		const { stateful } = dummy()
-			.scoped('scoped', ({ stateful }) => ({ stateful }), 'stateful')
-			.stateful('stateful', ({ stateful, scoped }) => ({ stateful, scoped }))
-			.mock()
-		expect(() => stateful.create().scoped.stateful)
-			.toThrowError(new ShouldBeMockedDependencyError('scoped', 'stateful', 'get'))
-	})
-	
-	test('Service with Stateful dependency should be given mocked Stateful', () => {
-		const { scoped } = dummy()
-			.stateful('stateful', ({ stateful }) => ({ stateful }))
-			.scoped('scoped', ({ stateful }) => ({ stateful }))
-			.mock()
-		expect(() => scoped.stateful.create())
-			.toThrowError(new ShouldBeMockedDependencyError('stateful', 'create', 'get'))
 	})
 })

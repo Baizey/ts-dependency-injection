@@ -1,6 +1,6 @@
 import { CircularDependencyError, ExistenceDependencyError } from '../Errors'
-import { DependencyInfo, ILifetime } from '../Lifetime'
-import { Key, Selector } from '../ServiceCollection'
+import { DependencyInfo } from '../Lifetime'
+import { Key, LifetimeCollection, Selector } from '../ServiceCollection'
 import { extractSelector, proxyOf } from '../utils'
 import { IServiceProvider } from './IServiceProvider'
 
@@ -11,7 +11,7 @@ export class ScopedContext<E = any> implements IServiceProvider<E> {
 	private readonly lookup: Record<Key<any>, DependencyInfo> = {}
 	private readonly ordered: DependencyInfo[] = []
 	
-	readonly lifetimes: Record<Key<E>, ILifetime<any, E>>
+	readonly lifetimes: LifetimeCollection<E>
 	readonly proxy: E
 	readonly scope: ProviderScope
 	
@@ -29,7 +29,26 @@ export class ScopedContext<E = any> implements IServiceProvider<E> {
 		return this.singletons[this.singletons.length - 1]
 	}
 	
-	enter(lifetime: DependencyInfo) {
+	provide<T>(selector: Selector<T, E>): T {
+		const lifetime = this.getLifetime(selector)
+		return this.enterOnce(lifetime, () => lifetime.provide(this) as T)
+	}
+	
+	enter<T>(lifetime: DependencyInfo[], action: (context: ScopedContext<E>) => T) {
+		lifetime.forEach(e => this._enter(e))
+		const result = action(this)
+		lifetime.forEach(e => this._leave(e))
+		return result
+	}
+	
+	enterOnce<T>(lifetime: DependencyInfo, action: (context: ScopedContext<E>) => T) {
+		this._enter(lifetime)
+		const result = action(this)
+		this._leave(lifetime)
+		return result
+	}
+	
+	private _enter(lifetime: DependencyInfo) {
 		if (lifetime.name in this.lookup) throw new CircularDependencyError(lifetime.name,
 			this.ordered.map(e => e.name))
 		this.ordered.push(lifetime)
@@ -37,18 +56,10 @@ export class ScopedContext<E = any> implements IServiceProvider<E> {
 		this.lookup[lifetime.name] = lifetime
 	}
 	
-	leave(lifetime: DependencyInfo) {
+	private _leave(lifetime: DependencyInfo) {
 		const last = this.ordered.pop()
 		if (last?.isSingleton) this.singletons.pop()
 		delete this.lookup[lifetime.name]
-	}
-	
-	provide<T>(selector: Selector<T, E>): T {
-		const lifetime = this.getLifetime(selector)
-		this.enter(lifetime)
-		const result = lifetime.provide(this)
-		this.leave(lifetime)
-		return result
 	}
 	
 	private getLifetime<T>(selector: Selector<T, E>) {

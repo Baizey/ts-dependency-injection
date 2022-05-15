@@ -7,49 +7,51 @@ Simple type strong dependency injection
 ## Goals of this package
 
 - Minimal impact on how you write individual objects
-- Be as close to C#'s IServiceCollection and IServiceProvider APIs as possible
+- Draw inspiration from .net core's dependency injection, but with a distinct ts/js flavour
 - Avoid decorators and other pre-processing magic as much as possible
 - Strong type checking
 
 ## Quick start
 
 ```
-// This interface can also be a concatenation of all the prop fields for each class
-// This 'global' type checker is optional and you can simply ignore it if desired
-interface Provider {
-    alice: Alice
-    b: IBob
-    c: string
-}
-
+type AliceDep = { c: string }
 class Alice {
-    private readonly c: string;
-    constructor(props: Provider){
-      this.c = props.c;
+    c: string
+    constructor({ c }: AliceDep){
+      this.c = c
     }
 }
+type BobDep = { alice: Alice }
 class Bob implements IBob {
-    private readonly alice: Alice;
-    constructor({ alice }: Provider){
-      this.alice = alice;
+    alice: Alice
+    constructor({ alice }: BobDep){
+      this.alice = alice
+    }
+}
+type SomethingDep = { bob: IBob }
+type SomethingProps = { ... }
+class Something {
+    props: SomethingProps
+    bob: IBob
+    constructor({bob}: SomethingDep, props: SomethingProps){
+      this.bob = bob
+      this.props = props
     }
 }
 
-const services = new ServiceCollection<Provider>();
-// Add dependencies using the <Dependency>, <Selector> inputs
-// Dependencies is either the class, or a { factory: (provider) => ... } object
-// Selector is either a type-strong string match with ServiceCollection or  a function (p) => p.alice which is also typestrong
-services.addSingleton<Alice>(Alice, 'alice');
-services.addScoped<IBob>(Bob, p => p.b)
-services.addTransient<string>({factory: () => 'hello world'}, p => p.c)
-
+// Note, the service collection is smart so it will know if you add Bob without having added Alice and do a type-complaining
+// You should never touch the generics on any ServiceCollection method unless you know what you do, they're doing black magic to let typescript know whats happening
+const services = Services() // or new ServiceCollection()
+  .addSingleton('c', { factory: () => 'Hello world' })
+  .addScoped('alice', Alice)
+  .addTransient('bob', Bob)
+  .addStateful('somethingFactory', Something)
 const provider = services.build();
 
-// Get instances in one of several ways
-// They are equivilent and are all typestrong / refactor friendly
-const alice1 = provider.provide(p => p.alice)
-const alice2 = provider.provide('alice')
-const { alice, b, c } = provider.proxy
+// All of these are equivilent and typestrong methods for getting services provided
+const bob = provider.provide(p => p.bob)
+const alice = provider.provide('alice')
+const { alice, bob, c } = provider.proxy
 ```
 
 # API
@@ -60,25 +62,32 @@ const { alice, b, c } = provider.proxy
 Generics used throughout:
 T is always the type being provided by a lifetime
 E is always your custom class dictating which dependencies the ServiceCollection will require to be added
-
+P is props for any stateful dependencies
+KE is an extra generic to allow typescript to figure stuff out, with an unknown object having a key to either add or remove from E  
+    
 LifeTimeConstructor<T, E> =
-    | { new(name: keyof E & (string | symbol), factory: (p: E) => T) }
+    | { new(name: keyof E & (string | symbol), factory: (p: E) => T): ILifetime<T, E> }
     | Singleton 
     | Scoped 
     | Transient
     
-DependencyOptions<T, E>: 
-    // A class constructor, fx Date, can only be used if class name is the same as the property in E it will be provided from
-    | DependencyConstructor<T, E> 
-    // A factory function and a selector, which is a type-strong helper to select a type-matching property in E
-    | { factory: (p: E) => T }
+StatefulDependencyOptions<T, P, E>: 
+    | StatefulDependencyConstructor<T, P, E> 
+    | { factory: (provider: E, props: P) => T }
+  
+StatefulDependencyConstructor<T, E>: 
+    | DependencyConstructor<T, E>
+    | { new(provider: E, props: P): T }
       
-// It is a requirement that any dependency either has a zero-parameter constructor or the first parameter taking in an instance of E
+DependencyOptions<T, E>: 
+    | DependencyConstructor<T, E> 
+    | { factory: (p: E) => T }
+
 DependencyConstructor<T, E>: 
     | { new(): T } 
     | { new(provider: E): T }
     
-Selector<T, E>: 
+Selector<T, E, KE>: 
     | keyof E & (string | symbol)
     | ({...[key in keyof E as E[key] extends T]}) => keyof E
 ```
@@ -87,13 +96,17 @@ Selector<T, E>:
 
 ### Constructor
 
-- `new<E>(template: E)`
+- `new<E = {}>()`
+
+alternative: use `Services()` as a provided quick-create method
 
 ### Add
 
-`add<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>, Selector<T, E>)`
+`add<T, KE>(LifeTimeConstructor<T, E>, keyof KE & string, DependencyOptions<T, E>)`
 
-Returns `void`
+Generic `KE` is here to allow typescript to know what's going on, it should not be manually set
+
+Returns `ServiceCollection<{ [key in KE]: T } & E>`
 
 Can throw
 
@@ -101,41 +114,9 @@ Can throw
 
 Alternatives:
 
-- `addSingleton<T>(DependencyOptions<T, E>, Selector<T, E>)`
-- `addScoped<T>(DependencyOptions<T, E>, Selector<T, E>)`
-- `addTransient<T>(DependencyOptions<T, E>, Selector<T, E>)`
-
-### TryAdd
-
-`tryAdd<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>, Selector<T, E>)`
-
-Returns `boolean`, true if added, false otherwise
-
-Can throw
-
-- Nothing
-
-Alternatives:
-
-- `tryAddSingleton<T>(DependencyOptions<T, E>, Selector<T, E>)`
-- `tryAddScoped<T>(DependencyOptions<T, E>, Selector<T, E>)`
-- `tryAddTransient<T>(DependencyOptions<T, E>, Selector<T, E>)`
-
-### Replace
-
-`replace<T>(LifeTimeConstructor<T, E>, DependencyOptions<T, E>, Selector<T, E>)`
-
-Returns `void`
-
-Can throw
-
-- Nothing
-
-Alternatives:
-
-- `replaceSingleton<T>(DependencyOptions<T, E>, Selector<T, E>)`
-- `replaceScoped<T>(DependencyOptions<T, E>, Selector<T, E>)`
-- `replaceTransient<T>(DependencyOptions<T, E>, Selector<T, E>)`
+- `addSingleton<T, KE>(keyof KE & string, DependencyOptions<T, E>)`
+- `addScoped<T, KE>(keyof KE & string, DependencyOptions<T, E>)`
+- `addTransient<T, KE>(keyof KE & string, DependencyOptions<T, E>)`
 
 ### Get
 
@@ -145,9 +126,9 @@ returns `ILifetime<T, E> | undefined`
 
 ### Remove
 
-- `remove<T>(Selector<T, E>)`
+- `remove<T, KE>(Selector<T, E, KE>)`
 
-returns `ILifetime<T, E> | undefined`
+returns `ServiceCollection<Omit<E, keyof KE>>`
 
 ### Build
 
