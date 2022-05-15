@@ -24,6 +24,10 @@ export class ServiceCollection<E = {}> {
 		if (lifetime) this.lifetimes[lifetime.name] = lifetime
 	}
 	
+	addMultiple<T>(func: (services: ServiceCollection<E>) => ServiceCollection<T>) {
+		return func(this)
+	}
+	
 	addStateful<T, KE, P>(
 		name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
 		Dependency: StatefulDependencyOptions<T, P, { [key in keyof KE]: Stateful<P, T> } & E>,
