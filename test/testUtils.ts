@@ -91,18 +91,19 @@ class Dummy<Current = {}> {
 		name: keyof KE & Key<KE>,
 		Dependency?: OnCreation<Current & { [key in keyof KE]: Recursive<Current> }>,
 		extra?: keyof KE & Key<KE> | (keyof KE & Key<KE>)[],
-	): Dummy<{ [key in keyof KE]: Recursive<Current> } & Current> {
+	) {
 		const Constructor = createClass(Dependency)
 		// @ts-ignore
 		const next = this.services.add<Recursive<Current>, KE>(Lifetime, name, Constructor)
-		return new Dummy<{ [key in keyof KE]: Recursive<Current> } & Current>(next)
+		// @ts-ignore
+		return new Dummy<{ [key in keyof KE | keyof Current]: Recursive<Current> }>(next)
 	}
 	
 	singleton<KE>(
 		name: keyof KE & Key<KE>,
 		Dependency?: OnCreation<Current & { [key in keyof KE]: Recursive<Current> }>,
 		extra?: keyof KE & Key<KE> | (keyof KE & Key<KE>)[],
-	): Dummy<{ [key in keyof KE]: Recursive<Current> } & Current> {
+	) {
 		return this.add(Singleton, name, Dependency)
 	}
 	
@@ -110,7 +111,7 @@ class Dummy<Current = {}> {
 		name: keyof KE & Key<KE>,
 		Dependency?: OnCreation<Current & { [key in keyof KE]: Recursive<Current> }>,
 		extra?: keyof KE & Key<KE> | (keyof KE & Key<KE>)[],
-	): Dummy<{ [key in keyof KE]: Recursive<Current> } & Current> {
+	) {
 		return this.add(Scoped, name, Dependency)
 	}
 	
@@ -118,7 +119,7 @@ class Dummy<Current = {}> {
 		name: keyof KE & Key<KE>,
 		Dependency?: OnCreation<Current & { [key in keyof KE]: Recursive<Current> }>,
 		extra?: keyof KE & Key<KE> | (keyof KE & Key<KE>)[],
-	): Dummy<{ [key in keyof KE]: Recursive<Current> } & Current> {
+	) {
 		return this.add(Transient, name, Dependency)
 	}
 	
@@ -126,12 +127,12 @@ class Dummy<Current = {}> {
 		name: keyof KE & Key<KE>,
 		Dependency?: OnCreation<Current & { [key in keyof KE]: Recursive<Current> }>,
 		extra?: keyof KE & Key<KE> | (keyof KE & Key<KE>)[],
-	): Dummy<{ [key in keyof KE]: Recursive<Current> } & Current> {
+	) {
 		const Constructor = createClass(Dependency)
 		// @ts-ignore
 		const next = this.services.addStateful<Recursive<Current>, void, KE>(name, Constructor)
 		// @ts-ignore
-		return new Dummy<{ [key in keyof KE]: Recursive<Current> } & Current>(next)
+		return new Dummy<{ [key in keyof KE | keyof Current]: Recursive<Current> }>(next)
 	}
 }
 

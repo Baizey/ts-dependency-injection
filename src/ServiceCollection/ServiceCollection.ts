@@ -27,7 +27,7 @@ export class ServiceCollection<E = {}> {
 	addStateful<T, KE, P>(
 		name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
 		Dependency: StatefulDependencyOptions<T, P, { [key in keyof KE]: Stateful<P, T> } & E>,
-	): ServiceCollection<{ [key in keyof KE]: Stateful<P, T> } & E> {
+	) {
 		const last = Lifetime.dummy(`${name}@constructor`)
 		
 		const factory = typeof Dependency === 'function'
@@ -73,9 +73,10 @@ export class ServiceCollection<E = {}> {
 	
 	add<T, KE>(Lifetime: LifetimeConstructor,
 	           name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
-	           Dependency: DependencyOptions<T, E>) {
+	           Dependency: DependencyOptions<T, E>,
+	): ServiceCollection<{ [key in keyof E | keyof KE]: key extends keyof KE ? T : key extends keyof E ? E[key] : never }> {
 		if (name in this.lifetimes) throw new DuplicateDependencyError(name)
-		return new ServiceCollection<{ [key in keyof KE]: T } & E>(
+		return new ServiceCollection<{ [key in keyof E | keyof KE]: key extends keyof KE ? T : key extends keyof E ? E[key] : never }>(
 			this.self,
 			new Lifetime(name, this.extractFactory(Dependency)))
 	}
