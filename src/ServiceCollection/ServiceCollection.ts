@@ -78,7 +78,7 @@ export class ServiceCollection<E = {}> {
 	add<T, KE>(Lifetime: LifetimeConstructor,
 	           name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
 	           Dependency: DependencyOptions<T, E>,
-	): ServiceCollection<{ [key in keyof E | keyof KE]: key extends keyof KE ? T : key extends keyof E ? E[key] : never }> {
+	) {
 		if (name in this.lifetimes) throw new DuplicateDependencyError(name)
 		return new ServiceCollection<{ [key in keyof E | keyof KE]: key extends keyof KE ? T : key extends keyof E ? E[key] : never }>(
 			this.self,
@@ -91,7 +91,7 @@ export class ServiceCollection<E = {}> {
 	
 	remove<T, KE>(selector: Selector<T, E, KE>) {
 		delete this.lifetimes[extractSelector(selector)]
-		return new ServiceCollection<Omit<E, keyof KE>>(this.self)
+		return new ServiceCollection<{ [key in keyof Omit<E, keyof KE>]: E[key] }>(this.self)
 	}
 	
 	build(): IServiceProvider<E> {
