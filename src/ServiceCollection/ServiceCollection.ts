@@ -28,14 +28,15 @@ export class ServiceCollection<E = {}> {
 		return func(this)
 	}
 	
-	addStateful<T, KE, P>(
+	addStateful<T, P, KE>(
 		name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
-		Dependency: StatefulDependencyOptions<T, P, { [key in keyof KE]: Stateful<P, T> } & E>,
+		Dependency: StatefulDependencyOptions<T, P, { [key in keyof E | keyof KE]: key extends keyof E ? E[key] : key extends keyof KE ? Stateful<P, T> : never }>,
 	) {
+		type New = { [key in keyof E | keyof KE]: key extends keyof E ? E[key] : key extends keyof KE ? Stateful<P, T> : never }
 		const last = Lifetime.dummy(`${name}@constructor`)
 		
 		const factory = typeof Dependency === 'function'
-			? (provider: { [key in keyof KE]: Stateful<P, T> } & E, props: P) => new Dependency(provider, props)
+			? (provider: New, props: P) => new Dependency(provider, props)
 			: Dependency.factory
 		
 		function next(scope: ProviderScope): number {
@@ -45,7 +46,7 @@ export class ServiceCollection<E = {}> {
 		
 		return this.add<Stateful<P, T>, KE>(Transient, name, {
 			factory: (_, ignoredContext) => {
-				const context = ignoredContext as ScopedContext<{ [key in keyof KE]: Stateful<P, T> } & E>
+				const context = ignoredContext as ScopedContext<New>
 				const { isSingleton, name: lastName } = context.lastSingleton ?? {}
 				const singleton = lastName ? `${String(lastName)}@` : ''
 				const track = Lifetime.dummy(`${singleton}${name}@creator#${next(context.scope)}`, isSingleton)
@@ -80,7 +81,7 @@ export class ServiceCollection<E = {}> {
 	           Dependency: DependencyOptions<T, E>,
 	) {
 		if (name in this.lifetimes) throw new DuplicateDependencyError(name)
-		return new ServiceCollection<{ [key in keyof E | keyof KE]: key extends keyof KE ? T : key extends keyof E ? E[key] : never }>(
+		return new ServiceCollection<{ [key in keyof E | keyof KE]: key extends keyof E ? E[key] : key extends keyof KE ? T : never }>(
 			this.self,
 			new Lifetime(name, this.extractFactory(Dependency)))
 	}

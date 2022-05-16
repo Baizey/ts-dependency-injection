@@ -10,21 +10,20 @@ export type Selector<T, E, KE = any> = (keyof KE & Key<E>) | ((e: SelectorOption
 
 export type Stateful<P, T> = { create(props: P): T }
 
-export type Factory<T, E> = (data: E, provider: ScopedContext<E>) => T
-export type StatefulFactory<T, P, E> = (data: E, props: P, provider: ScopedContext<E>) => T
-
-export type DependencyConstructor<T = any, E = any> = { new(provider: E): T } | { new(): T }
-export type StatefulDependencyConstructor<T = any, E = any, P = any> =
-	| { new(provider: E, props: P): T }
-	| { new(provider: E): T }
-	| { new(): T }
-
-export type DependencyOptions<T, E = any> =
-	| { factory: Factory<T, E> }
-	| DependencyConstructor<T, E>
-
 export type StatefulDependencyOptions<T, P, E> =
 	{ factory: StatefulFactory<T, P, E> }
-	| StatefulDependencyConstructor<T, E, P>
+	| StatefulDependencyConstructor<T, P, E>
+export type StatefulDependencyConstructor<T, P, E> =
+	| { new(provider: E, props: P): T }
+	| DependencyConstructor<T, E>
+export type StatefulFactory<T, P, E> = (provider: E, props: P, scope: ScopedContext<E>) => T
+
+export type DependencyOptions<T, E> =
+	| { factory: Factory<T, E> }
+	| DependencyConstructor<T, E>
+export type DependencyConstructor<T, E> =
+	| { new(provider: E): T }
+	| { new(): T }
+export type Factory<T, E> = (provider: E, scope: ScopedContext<E>) => T
 
 export type LifetimeConstructor<T = any, E = any> = new (name: Key<E>, factory: Factory<T, E>) => ILifetime<T, E>

@@ -3,21 +3,26 @@ import { dummy } from '../testUtils'
 
 const propertyOfStateful = propertyOf<Stateful<any, any>>()
 
+class B { // noinspection JSUnusedGlobalSymbols
+	bId: number = 5
+}
+
 class A {
-	readonly a: Stateful<null, A>
-	readonly props: null
-	
-	constructor({ a }: { a: Stateful<null, A> }, props: null) {
-		this.a = a
-		this.props = props
+	// noinspection JSUnusedLocalSymbols
+	constructor({ a, b, c }: { a: B, b: B, c: Stateful<null, A> }, props: null) {
 	}
 }
 
 describe(propertyOfStateful.create, () => {
 	
 	test('Stateful factory can depend on itself', () => {
-		const sut = Services().addStateful('a', A).build().proxy
-		expect(sut.a.create(null).a.create(null))
+		const { c } = Services()
+			.addSingleton('a', B)
+			.addSingleton('b', B)
+			.addStateful('c', A)
+			.addSingleton('d', B)
+			.build().proxy
+		expect(c.create(null))
 	})
 	
 	test('Using circular factory in constructor gives circular error', () => {
