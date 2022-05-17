@@ -10,13 +10,14 @@ export type Selector<T, E, KE = any> = (keyof KE & Key<E>) | ((e: SelectorOption
 
 export type Stateful<P, T> = { create(props: P): T }
 
-export type StatefulDependencyOptions<T, P, E> =
-	{ factory: StatefulFactory<T, P, E> }
-	| StatefulDependencyConstructor<T, P, E>
-export type StatefulDependencyConstructor<T, P, E> =
-	| { new(provider: E, props: P): T }
-	| DependencyConstructor<T, E>
-export type StatefulFactory<T, P, E> = (provider: E, props: P, scope: ScopedContext<E>) => T
+export type StatefulDependencyOptions<T, P, E, KE> =
+	{ factory: StatefulFactory<T, P, E, KE> }
+	| StatefulDependencyConstructor<T, P, E, KE>
+export type StatefulDependencyConstructor<T, P, E, KE> =
+	| { new(provider: E & KE, props: P): T }
+	| { new(provider: E & KE): T }
+	| { new(): T }
+export type StatefulFactory<T, P, E, KE> = (provider: E & KE, props: P, scope: ScopedContext<E>) => T
 
 export type DependencyOptions<T, E> =
 	| { factory: Factory<T, E> }

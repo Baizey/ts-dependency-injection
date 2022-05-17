@@ -30,7 +30,7 @@ export class ServiceCollection<E = {}> {
 	
 	addStateful<T, P, KE>(
 		name: keyof KE & Key<KE>,
-		Dependency: StatefulDependencyOptions<T, P, E & { [key in keyof KE]: Stateful<P, T> }>,
+		Dependency: StatefulDependencyOptions<T, P, E, { [key in keyof KE]: Stateful<P, T> }>,
 	) {
 		const last = Lifetime.dummy(`${name}@constructor`)
 		
