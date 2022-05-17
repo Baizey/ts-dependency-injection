@@ -3,9 +3,12 @@ import { IServiceProvider } from './ServiceProvider'
 
 export type PropertyOf<E> = Required<{ [key in keyof E]: key & Key<E> }>
 
-export const Services = <T = {}>() => new ServiceCollection<T>()
+export const Services = () => new ServiceCollection()
 
 const _propertyOf = new Proxy({}, { get: (_, p) => p }) as any
+
+export type ServiceProviderOf<T extends IServiceProvider> = T['proxy']
+export type ServiceCollectionOf<T extends ServiceCollection<any>> = ServiceProviderOf<ReturnType<T['build']>>
 
 export const propertyOf = <T>() => _propertyOf as PropertyOf<T>
 

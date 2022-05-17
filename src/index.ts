@@ -2,4 +2,4 @@
 export * from './ServiceProvider'
 export * from './Lifetime'
 export * from './Errors'
-export { Services, propertyOf } from './utils'
+export { Services, propertyOf, ServiceCollectionOf, ServiceProviderOf } from './utils'
