@@ -11,8 +11,10 @@ export type Selector<T, E, KE = any> = (keyof KE & Key<E>) | ((e: SelectorOption
 export type Stateful<P, T> = { create(props: P): T }
 
 export type StatefulDependencyOptions<T, P, E, KE> =
-	{ factory: StatefulFactory<T, P, E, KE> }
+	| { factory: StatefulFactory<T, P, E, KE> }
 	| StatefulDependencyConstructor<T, P, E, KE>
+	| { factory: StatefulFactory<T, P, E, {}> }
+	| StatefulDependencyConstructor<T, P, E, {}>
 export type StatefulDependencyConstructor<T, P, E, KE> =
 	| { new(provider: E & KE, props: P): T }
 	| { new(provider: E & KE): T }
