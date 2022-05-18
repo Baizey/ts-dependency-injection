@@ -28,9 +28,9 @@ export class ServiceCollection<E = {}> {
 		return func(this)
 	}
 	
-	addStateful<T, P, KE>(
-		name: keyof KE & Key<KE>,
-		Dependency: StatefulDependencyOptions<T, P, E, { [key in keyof KE]: Stateful<P, T> }>,
+	addStateful<T, P, K extends string>(
+		name: K & (K extends keyof E ? never : any),
+		Dependency: StatefulDependencyOptions<T, P, { [key in ((keyof E) | K)]: key extends keyof E ? E[key] : Stateful<P, T> }>,
 	) {
 		const last = Lifetime.dummy(`${name}@constructor`)
 		
@@ -43,7 +43,7 @@ export class ServiceCollection<E = {}> {
 			return scope[name]++
 		}
 		
-		return this.add<Stateful<P, T>, KE>(Transient, name as any, {
+		return this.add<Stateful<P, T>, K>(Transient, name as any, {
 			factory: (_, ignoredContext) => {
 				const context = ignoredContext as ScopedContext<E>
 				const { isSingleton, name: lastName } = context.lastSingleton ?? {}
@@ -60,27 +60,28 @@ export class ServiceCollection<E = {}> {
 		})
 	}
 	
-	addSingleton<T, KE>(name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
-	                    Dependency: DependencyOptions<T, E>) {
-		return this.add<T, KE>(Singleton, name, Dependency)
+	addSingleton<T, K extends string>(name: K & (K extends keyof E ? never : any),
+	                                  Dependency: DependencyOptions<T, E>) {
+		return this.add<T, K>(Singleton, name, Dependency)
 	}
 	
-	addScoped<T, KE>(name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
-	                 Dependency: DependencyOptions<T, E>) {
-		return this.add<T, KE>(Scoped, name, Dependency)
+	addScoped<T, K extends string>(name: K & (K extends keyof E ? never : any),
+	                               Dependency: DependencyOptions<T, E>) {
+		return this.add<T, K>(Scoped, name, Dependency)
 	}
 	
-	addTransient<T, KE>(name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
-	                    Dependency: DependencyOptions<T, E>) {
-		return this.add<T, KE>(Transient, name, Dependency)
+	addTransient<T, K extends string>(name: K & (K extends keyof E ? never : any),
+	                                  Dependency: DependencyOptions<T, E>) {
+		return this.add<T, K>(Transient, name, Dependency)
 	}
 	
-	add<T, KE>(Lifetime: LifetimeConstructor,
-	           name: keyof KE & Key<KE> & (keyof KE extends keyof E ? never : any),
-	           Dependency: DependencyOptions<T, E>,
+	add<T, K extends string>(Lifetime: LifetimeConstructor,
+	                         name: K & (K extends keyof E ? never : any),
+	                         Dependency: DependencyOptions<T, E>,
 	) {
 		if (name in this.lifetimes) throw new DuplicateDependencyError(name)
-		return new ServiceCollection<{ [key in keyof E | keyof KE]: key extends keyof E ? E[key] : key extends keyof KE ? T : never }>(
+		type Provided = { [key in ((keyof E) | K)]: key extends keyof E ? E[key] : T }
+		return new ServiceCollection<{ [key in keyof Provided]: Provided[key] }>(
 			this.self,
 			new Lifetime(name, this.extractFactory(Dependency)))
 	}
@@ -89,9 +90,10 @@ export class ServiceCollection<E = {}> {
 		return this.lifetimes[extractSelector(selector)] as ILifetime<T, E>
 	}
 	
-	remove<T, KE>(selector: Selector<T, E, KE>) {
+	remove<T, K extends string>(selector: Selector<T, E>) {
 		delete this.lifetimes[extractSelector(selector)]
-		return new ServiceCollection<{ [key in keyof Omit<E, keyof KE>]: E[key] }>(this.self)
+		type Provided = { [key in keyof Omit<E, K>]: key extends keyof E ? E[key] : T }
+		return new ServiceCollection<{ [key in keyof Provided]: Provided[key] }>(this.self)
 	}
 	
 	build(): IServiceProvider<E> {

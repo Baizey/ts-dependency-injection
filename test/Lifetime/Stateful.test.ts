@@ -10,7 +10,7 @@ class B { // noinspection JSUnusedLocalSymbols
 }
 
 class C {// noinspection JSUnusedLocalSymbols
-	constructor(a: { a: A, 'c': Stateful<number, C> }, b: number) {}
+	constructor(a: { a: A, c: Stateful<number, C> }, b: number) {}
 }
 
 describe(propertyOfStateful.create, () => {
@@ -18,10 +18,11 @@ describe(propertyOfStateful.create, () => {
 	test('Stateful factory can depend on itself', () => {
 		const { b } = Services()
 			.addSingleton('a', A)
+			.addSingleton('aa', A)
 			.addStateful('b', B)
 			.addStateful('c', C)
 			.build().proxy
-		expect(b.create(6))
+		expect(b.create(6)).toBeTruthy()
 	})
 	
 	test('Using circular factory in constructor gives circular error', () => {
