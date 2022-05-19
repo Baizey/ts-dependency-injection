@@ -1,6 +1,6 @@
 import { ShouldBeMockedDependencyError } from '../Errors'
 import { ILifetime } from '../Lifetime'
-import { ScopedContext } from '../ServiceProvider'
+import { ScopedServiceProvider } from '../ServiceProvider'
 import { propertyOf } from '../utils'
 import { ServiceCollection } from './ServiceCollection'
 import { Factory, Key } from './types'
@@ -27,7 +27,7 @@ export function proxyLifetime<E>(lifetime: ILifetime<unknown, E>, mock: MockSetu
 	return new Proxy(lifetime, {
 		get(target, prop: keyof ILifetime<unknown, E>) {
 			if (prop !== provide) return target[prop]
-			return (context: ScopedContext<E>) => {
+			return (context: ScopedServiceProvider<E>) => {
 				if (context.depth === 1) return target.provide(context)
 				switch (typeof mock) {
 					case 'undefined':

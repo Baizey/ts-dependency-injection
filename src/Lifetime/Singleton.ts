@@ -1,5 +1,5 @@
 import { Factory, Key } from '../ServiceCollection'
-import { ScopedContext } from '../ServiceProvider'
+import { ScopedServiceProvider } from '../ServiceProvider'
 import { ILifetime } from './ILifetime'
 
 export class Singleton<T, E> implements ILifetime<T, E> {
@@ -14,7 +14,7 @@ export class Singleton<T, E> implements ILifetime<T, E> {
 		this.factory = factory
 	}
 	
-	provide(context: ScopedContext<E>) {
+	provide(context: ScopedServiceProvider<E>) {
 		if (this.value) return this.value
 		this.value = this.factory(context.proxy, context)
 		return this.value

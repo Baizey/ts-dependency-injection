@@ -2,6 +2,7 @@ import {
 	DuplicateDependencyError,
 	propertyOf,
 	Scoped,
+	ScopedServiceProvider,
 	ServiceCollection,
 	Services,
 	ShouldBeMockedDependencyError,
@@ -46,7 +47,7 @@ describe(services.add, () => {
 		const actual = sut.addStateful('alice', Dummy)
 		expect(spy).toBeCalledTimes(1)
 		expect(actual.get((p) => p.alice)).toBeInstanceOf(Transient)
-		expect(actual.get('alice')?.provide(Context())).toHaveProperty('create')
+		expect(actual.get('alice')?.provide(new ScopedServiceProvider(Context()))).toHaveProperty('create')
 	})
 	test('Adding twice should give duplicate error', () => {
 		const sut = Services().add(Singleton, 'a', Dummy)

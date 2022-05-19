@@ -1,6 +1,6 @@
-import { propertyOf, ScopedContext } from '../src'
+import { propertyOf, ScopedServiceProvider } from '../src'
 
-const provider = propertyOf<ScopedContext>()
+const provider = propertyOf<ScopedServiceProvider>()
 
 describe(provider.lastSingleton, () => {
 	test('dummy', () => {

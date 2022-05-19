@@ -1,5 +1,5 @@
 import { ILifetime } from '../Lifetime'
-import { ScopedContext } from '../ServiceProvider'
+import { ScopedServiceProvider } from '../ServiceProvider'
 
 export type Key<E> = keyof E & (string)
 
@@ -17,7 +17,7 @@ export type StatefulDependencyConstructor<T, P, E> =
 	| { new(provider: E, props: P): T }
 	| { new(provider: E): T }
 	| { new(): T }
-export type StatefulFactory<T, P, E> = (provider: E, props: P, scope: ScopedContext<E>) => T
+export type StatefulFactory<T, P, E> = (provider: E, props: P, scope: ScopedServiceProvider<E>) => T
 
 export type DependencyOptions<T, E> =
 	| { factory: Factory<T, E> }
@@ -25,6 +25,6 @@ export type DependencyOptions<T, E> =
 export type DependencyConstructor<T, E> =
 	| { new(provider: E): T }
 	| { new(): T }
-export type Factory<T, E> = (provider: E, scope: ScopedContext<E>) => T
+export type Factory<T, E> = (provider: E, scope: ScopedServiceProvider<E>) => T
 
 export type LifetimeConstructor<T = any, E = any> = new (name: Key<E>, factory: Factory<T, E>) => ILifetime<T, E>

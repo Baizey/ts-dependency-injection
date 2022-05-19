@@ -1,6 +1,6 @@
 import { DuplicateDependencyError } from '../Errors'
 import { ILifetime, Lifetime, Scoped, Singleton, Transient } from '../Lifetime'
-import { IServiceProvider, ProviderScope, ScopedContext, ServiceProvider } from '../ServiceProvider'
+import { IServiceProvider, ScopedServiceProvider, ServiceProvider } from '../ServiceProvider'
 import { extractSelector } from '../utils'
 import { MockSetup, proxyLifetimes } from './mockUtils'
 import {
@@ -38,22 +38,26 @@ export class ServiceCollection<E = {}> {
 			? (provider: E, props: P) => new Dependency(provider as any, props)
 			: Dependency.factory
 		
-		function next(scope: ProviderScope): number {
+		function next({ scope }: ScopedServiceProvider): number {
 			scope[name] = scope[name] || 1
 			return scope[name]++
 		}
 		
 		return this.add<Stateful<P, T>, K>(Transient, name as any, {
-			factory: (_, ignoredContext) => {
-				const context = ignoredContext as ScopedContext<E>
+			factory: (proxy, context) => {
+				const parentContext = context.parent as ScopedServiceProvider<E>
 				const { isSingleton, name: lastName } = context.lastSingleton ?? {}
 				const singleton = lastName ? `${String(lastName)}@` : ''
-				const track = Lifetime.dummy(`${singleton}${name}@creator#${next(context.scope)}`, isSingleton)
+				
+				const escapedContext = new ScopedServiceProvider(context.root)
+					.enter(parentContext.depth && last)
+					.enter(Lifetime.dummy(`${singleton}${name}#${next(context)}`, isSingleton))
+				const trappedContext = parentContext.enter(Lifetime.dummy(`${name}#`))
 				
 				return {
 					create: (props: P) => {
-						const lifetimes = [context.depth && last, track].filter(e => e) as ILifetime[]
-						return context.enter(lifetimes, () => factory(context.proxy as any, props, context as any))
+						const context = parentContext.isDone || !parentContext.depth ? escapedContext : trappedContext
+						return factory(context.proxy as any, props, context as any)
 					},
 				}
 			},

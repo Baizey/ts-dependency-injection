@@ -30,8 +30,8 @@ describe(propertyOfStateful.create, () => {
 			.stateful('circular', ({ circular }) => { circular.create() })
 			.build()
 		expect(() => circular.create())
-			.toThrowError(new CircularDependencyError('circular@constructor',
-				['circular@creator#1', 'circular@constructor', 'circular@creator#2']))
+			.toThrowError(new CircularDependencyError('circular#',
+				['circular#1', 'circular#']))
 	})
 	
 	test('Singleton dependency chain has scope restraints', () => {
@@ -41,7 +41,7 @@ describe(propertyOfStateful.create, () => {
 			.singleton('singleton', ({ stateful }) => ({ stateful }))
 			.build()
 		expect(() => singleton.stateful.create())
-			.toThrowError(new SingletonScopedDependencyError('singleton@stateful@creator#1', 'scoped'))
+			.toThrowError(new SingletonScopedDependencyError('singleton@stateful#1', 'scoped'))
 	})
 	
 	test('Non-singleton dependency chain has no scope restraints', () => {

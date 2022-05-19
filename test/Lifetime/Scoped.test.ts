@@ -1,5 +1,5 @@
 ﻿import 'jest'
-import { Scoped, Singleton, SingletonScopedDependencyError } from '../../src'
+import { Scoped, ScopedServiceProvider, Singleton, SingletonScopedDependencyError } from '../../src'
 import { Context, Lifetime, propertyOfLifetime, UUID } from '../testUtils'
 
 describe(propertyOfLifetime.provide, () => {
@@ -40,10 +40,10 @@ describe(propertyOfLifetime.isSingleton, () => {
 
 describe(SingletonScopedDependencyError.name, () => {
 	test('fail providing if in scope with a singleton', () => {
-		const context = Context()
 		const singleton = Lifetime(Singleton)
+		const context = new ScopedServiceProvider(Context(), singleton)
 		const sut = Lifetime(Scoped)
-		expect(() => context.enterOnce(singleton, () => sut.provide(context)))
+		expect(() => sut.provide(context))
 			.toThrowError(new SingletonScopedDependencyError(singleton.name, sut.name))
 	})
 })

@@ -1,5 +1,5 @@
 import { Key } from '../ServiceCollection'
-import { ScopedContext } from '../ServiceProvider'
+import { ScopedServiceProvider } from '../ServiceProvider'
 
 export interface DependencyInfo<E = any> {
 	readonly name: Key<E>,
@@ -7,7 +7,7 @@ export interface DependencyInfo<E = any> {
 }
 
 export interface ILifetime<T = any, E = any> extends DependencyInfo<E> {
-	provide(context: ScopedContext<E>): T
+	provide(context: ScopedServiceProvider<E>): T
 	
 	clone(): ILifetime<T, E>
 }

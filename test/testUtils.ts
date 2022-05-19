@@ -4,7 +4,7 @@ import {
 	LifetimeConstructor,
 	propertyOf,
 	Scoped,
-	ScopedContext,
+	ScopedServiceProvider,
 	ServiceCollection,
 	ServiceProvider,
 	Singleton,
@@ -26,7 +26,7 @@ export const Lifetime = (Constructor: LifetimeConstructor) =>
 	new Constructor(UUID.randomUUID(), () => UUID.randomUUID())
 
 export const Provider = () => new ServiceProvider({})
-export const Context = () => new ScopedContext(Provider())
+export const Context = () => new ScopedServiceProvider(Provider())
 
 class InnerBase {
 	id = UUID.randomUUID()

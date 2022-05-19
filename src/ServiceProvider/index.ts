@@ -1,3 +1,3 @@
 export * from './IServiceProvider'
 export * from './ServiceProvider'
-export * from './ScopedContext'
+export * from './ScopedServiceProvider'
