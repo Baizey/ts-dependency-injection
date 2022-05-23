@@ -4,8 +4,6 @@ import { ILifetime } from './ILifetime'
 
 export class Singleton<T, E> implements ILifetime<T, E> {
 	private readonly factory: Factory<T, E>
-	private value?: T
-	
 	readonly isSingleton = true
 	readonly name: Key<E>
 	
@@ -15,9 +13,9 @@ export class Singleton<T, E> implements ILifetime<T, E> {
 	}
 	
 	provide(context: ScopedServiceProvider<E>) {
-		if (this.value) return this.value
-		this.value = this.factory(context.proxy, context)
-		return this.value
+		const { root: { instances }, proxy } = context
+		if (!instances[this.name]) instances[this.name] = this.factory(proxy, context)
+		return instances[this.name]
 	}
 	
 	clone(): ILifetime<T, E> {

@@ -1,14 +1,15 @@
-import { LifetimeCollection, Selector } from '../ServiceCollection'
+import { Key, LifetimeCollection, Selector } from '../ServiceCollection'
 import { proxyOf } from '../utils'
 import { IServiceProvider } from './IServiceProvider'
 import { ScopedServiceProvider } from './ScopedServiceProvider'
 
 export class ServiceProvider<E = any> implements IServiceProvider<E> {
-	readonly lifetimes: LifetimeCollection<E>
-	readonly proxy: E
-	readonly root: IServiceProvider<E> = this
 	readonly isDone: boolean = false
 	readonly depth: number = 0
+	readonly root: ServiceProvider<E> = this
+	readonly lifetimes: LifetimeCollection<E>
+	readonly instances: Record<Key<any>, any> = {}
+	readonly proxy: E
 	
 	constructor(lifetimes: LifetimeCollection<E>) {
 		this.lifetimes = lifetimes
@@ -16,11 +17,10 @@ export class ServiceProvider<E = any> implements IServiceProvider<E> {
 	}
 	
 	using(action: (provider: E) => any): void {
-		action(new ScopedServiceProvider(this).proxy)
+		new ScopedServiceProvider<E>(this).using(action)
 	}
 	
 	provide<T>(selector: Selector<T, E>): T {
-		return new ScopedServiceProvider<E>(this)
-			.provide(selector)
+		return new ScopedServiceProvider<E>(this).provide(selector)
 	}
 }

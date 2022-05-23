@@ -16,7 +16,7 @@ describe(propertyOfLifetime.provide, () => {
 		const expected = UUID.randomUUID()
 		const sut = Lifetime(Scoped)
 		const context = Context()
-		context.scope[sut.name] = expected
+		context.instances[sut.name] = expected
 		
 		const actual = sut.provide(context)
 		

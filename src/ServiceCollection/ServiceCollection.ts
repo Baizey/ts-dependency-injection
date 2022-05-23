@@ -38,9 +38,9 @@ export class ServiceCollection<E = {}> {
 			? (provider: E, props: P) => new Dependency(provider as any, props)
 			: Dependency.factory
 		
-		function next({ scope }: ScopedServiceProvider): number {
-			scope[name] = scope[name] || 1
-			return scope[name]++
+		function next({ instances }: ScopedServiceProvider): number {
+			instances[name] = instances[name] || 1
+			return instances[name]++
 		}
 		
 		return this.add<Stateful<P, T>, K>(Transient, name as any, {

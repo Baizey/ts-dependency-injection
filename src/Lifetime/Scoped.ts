@@ -14,10 +14,10 @@ export class Scoped<T, E> implements ILifetime<T, E> {
 	}
 	
 	provide(context: ScopedServiceProvider<E>) {
-		const { lastSingleton, scope, proxy } = context
+		const { lastSingleton, instances, proxy } = context
 		if (lastSingleton) throw new SingletonScopedDependencyError(lastSingleton.name, this.name)
-		scope[this.name] = scope[this.name] ?? this.factory(proxy, context)
-		return scope[this.name]
+		if (!instances[this.name]) instances[this.name] = this.factory(proxy, context)
+		return instances[this.name]
 	}
 	
 	clone(): ILifetime<T, E> {
