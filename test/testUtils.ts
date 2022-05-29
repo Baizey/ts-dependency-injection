@@ -2,7 +2,9 @@ import { v4 } from 'uuid'
 import {
 	ILifetime,
 	LifetimeConstructor,
+	MockStrategy,
 	propertyOf,
+	ProviderMock,
 	Scoped,
 	ScopedServiceProvider,
 	ServiceCollection,
@@ -10,7 +12,6 @@ import {
 	Singleton,
 	Transient,
 } from '../src'
-import { MockSetup } from '../src/ServiceCollection/mockUtils'
 
 class NextNumber {
 	private static nextNumber = 1
@@ -81,9 +82,10 @@ class Dummy<Current = {}> {
 		return this.services.build().proxy
 	}
 	
-	public mock(mock: MockSetup<Recursive<Current>> = {}): Recursive<Current> {
+	public mock(mock: MockStrategy | ProviderMock<Recursive<Current>> = {},
+	            defaultMock?: MockStrategy): Recursive<Current> {
 		// @ts-ignore
-		return this.services.buildMock(mock).proxy
+		return this.services.buildMock(mock, defaultMock).proxy
 	}
 	
 	add<KE>(

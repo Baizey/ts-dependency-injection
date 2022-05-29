@@ -1,63 +1,137 @@
-import { ShouldBeMockedDependencyError } from '../Errors'
+import { Access, ShouldBeMockedDependencyError } from '../Errors'
 import { ILifetime } from '../Lifetime'
 import { ScopedServiceProvider } from '../ServiceProvider'
 import { propertyOf } from '../utils'
 import { ServiceCollection } from './ServiceCollection'
 import { Factory, Key } from './types'
 
-export type MockSetup<E> = {
-	[key in keyof E]?: Partial<E[key]> | Factory<Partial<E[key]>, E>;
-};
+export enum MockStrategy {
+	/**
+	 * ONLY HERE FOR DOCUMENTATION PURPOSES, DO NOT USE IN CODE
+	 *
+	 * Default behaviour for any dependency/dependency property given in the ProviderMock that isn't a MockStrategy
+	 * Getter usage will return most recent dummy value (either the initial value, or a later set value)
+	 * Setter usage will set new dummy value
+	 */
+	dummyStub = 'dummyStub',
+	
+	/**
+	 * This is the default behaviour unless otherwise explicitly stated
+	 *
+	 * Getter usage will return null
+	 * Setter usage will do nothing
+	 */
+	nullStub = 'nullStub',
+	
+	/**
+	 * Getter usage will throw NotMockedException(dependency, prop, usage-type)
+	 * Setter usage will throw NotMockedException(dependency, prop, usage-type)
+	 */
+	exceptionStub = 'exceptionStub',
+}
 
-export function proxyLifetimes<E>(services: ServiceCollection<E>, mock: MockSetup<E>) {
+type PropertyMock<T> = { [key in keyof T]?: T[key] | MockStrategy | null | (() => null) }
+type DependencyMock<E, K extends keyof E> =
+	| Partial<PropertyMock<E[K]>>
+	| Factory<Partial<PropertyMock<E[K]>>, E>
+	| MockStrategy
+export type ProviderMock<E> = { [key in keyof E]?: DependencyMock<E, key> };
+
+export function proxyLifetimes<E>(services: ServiceCollection<E>,
+                                  providerMock: MockStrategy | ProviderMock<E>,
+                                  defaultMock: MockStrategy = MockStrategy.nullStub) {
+	
+	if (typeof providerMock === 'string') { defaultMock = providerMock }
+	const dependencyMock: ProviderMock<E> = (typeof providerMock === 'string') ? {} : providerMock
+	
 	const provider = services.build()
 	Object.values<ILifetime<unknown, E>>(provider.lifetimes)
 		.forEach((lifetime) => {
-			const setup = mock[lifetime.name]
-			// @ts-ignore
-			provider.lifetimes[lifetime.name] = proxyLifetime(lifetime, setup)
+			const propertyMock = dependencyMock[lifetime.name] ?? defaultMock
+			provider.lifetimes[lifetime.name] = proxyLifetime(lifetime, propertyMock, defaultMock)
 		})
 	return provider
 }
 
 const provide = propertyOf<ILifetime>().provide
 
-export function proxyLifetime<E>(lifetime: ILifetime<unknown, E>, mock: MockSetup<E>[Key<E>] | undefined) {
+export function proxyLifetime<E>(
+	lifetime: ILifetime<unknown, E>,
+	dependencyMock: DependencyMock<E, keyof E>,
+	defaultMock: MockStrategy,
+) {
 	const name = lifetime.name.toString()
 	return new Proxy(lifetime, {
 		get(target, prop: keyof ILifetime<unknown, E>) {
 			if (prop !== provide) return target[prop]
 			return (context: ScopedServiceProvider<E>) => {
 				if (context.depth === 1) return target.provide(context)
-				switch (typeof mock) {
-					case 'undefined':
-						return proxyValue(name, {})
+				
+				const shadow = target.provide(context)
+				
+				switch (typeof dependencyMock) {
+					case 'string':
+						return mockDependency(name, shadow, {}, dependencyMock)
 					case 'function':
-						return proxyValue(name, mock(context.proxy, context))
+						return mockDependency(name, shadow, dependencyMock(context.proxy, context), defaultMock)
+					case 'object':
+						return mockDependency(name, shadow, dependencyMock, defaultMock)
 					default:
-						return proxyValue(name, mock)
+						return mockDependency(name, shadow, {}, defaultMock)
 				}
 			}
 		},
 	})
 }
 
-export function proxyValue<T extends object>(name: string, obj: Partial<T>): T {
+export function mockDependency<T extends object>(name: string,
+                                                 shadowInstance: any,
+                                                 propertyMock: PropertyMock<T>,
+                                                 defaultMock: MockStrategy): T {
+	function isFunc(prop: any) {
+		return typeof shadowInstance[prop] === 'function'
+	}
+	
+	function mockValue(prop: Key<T>, mockType: MockStrategy, type: Access) {
+		switch (mockType) {
+			case MockStrategy.exceptionStub:
+				if (!isFunc(prop)) throw new ShouldBeMockedDependencyError(name, prop, type)
+				return () => { throw  new ShouldBeMockedDependencyError(name, prop, 'function') }
+			case MockStrategy.nullStub:
+			default:
+				return isFunc(prop) ? (() => null) : null
+		}
+	}
+	
 	// noinspection JSUnusedGlobalSymbols
-	return new Proxy(obj,
+	const proxy = new Proxy(propertyMock,
 		{
 			get(target, prop: Key<T>) {
-				if ((prop in target) || Object.getOwnPropertyDescriptor(target, prop)?.get)
-					return target[prop]
-				throw new ShouldBeMockedDependencyError(name, prop.toString(), 'get')
+				const value = target[prop]
+				const mockType = (value as MockStrategy)
+				
+				if (prop in target && mockType in MockStrategy)
+					return mockValue(prop, mockType, 'get')
+				else if (prop in target || Object.getOwnPropertyDescriptor(target, prop)?.get)
+					return value
+				else
+					return mockValue(prop, defaultMock, 'get')
 			},
-			set(target, prop: Key<T>, value) {
-				if ((prop in target) || Object.getOwnPropertyDescriptor(target, prop)?.set) {
-					target[prop] = value
-					return true
-				}
-				throw new ShouldBeMockedDependencyError(name, prop.toString(), 'set')
+			set(target, prop: Key<T>, newValue) {
+				const value = target[prop]
+				const mockType = (value as MockStrategy)
+				
+				if (prop in target && mockType in MockStrategy)
+					target[prop] = mockValue(prop, mockType, 'set')
+				else if (prop in target || Object.getOwnPropertyDescriptor(target, prop)?.set)
+					target[prop] = newValue
+				else
+					target[prop] = mockValue(prop, defaultMock, 'set')
+				
+				return true
 			},
 		},
-	) as T
+	) as PropertyMock<T>
+	
+	return proxy as T
 }

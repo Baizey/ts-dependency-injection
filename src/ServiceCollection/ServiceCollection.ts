@@ -2,7 +2,7 @@ import { DuplicateDependencyError } from '../Errors'
 import { ILifetime, Lifetime, Scoped, Singleton, Transient } from '../Lifetime'
 import { IServiceProvider, ScopedServiceProvider, ServiceProvider } from '../ServiceProvider'
 import { extractSelector } from '../utils'
-import { MockSetup, proxyLifetimes } from './mockUtils'
+import { MockStrategy, ProviderMock, proxyLifetimes } from './mockUtils'
 import {
 	DependencyOptions,
 	Factory,
@@ -113,8 +113,8 @@ export class ServiceCollection<E = {}> {
 		return new ServiceProvider<E>(this.cloneLifetimes())
 	}
 	
-	buildMock(mock: MockSetup<E> = {}): IServiceProvider<E> {
-		return proxyLifetimes(this, mock)
+	buildMock(mock: MockStrategy | ProviderMock<E> = {}, defaultMockType?: MockStrategy): IServiceProvider<E> {
+		return proxyLifetimes(this, mock, defaultMockType)
 	}
 	
 	private extractFactory<T>(Option: DependencyOptions<T, E>): Factory<T, E> {

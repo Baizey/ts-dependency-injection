@@ -1,5 +1,6 @@
 import {
 	DuplicateDependencyError,
+	MockStrategy,
 	propertyOf,
 	Scoped,
 	ScopedServiceProvider,
@@ -71,60 +72,72 @@ describe(services.remove, () => {
 })
 
 describe(services.buildMock, () => {
-	test('Root is normal, dependencies are mocked', () => {
-		const { bob, alice } = dummy()
-			.singleton('alice')
-			.singleton('bob', ({ alice }) => ({ alice }))
+	test('Default mock strategy should be followed', () => {
+		const { a, sut } = dummy()
+			.singleton('a')
+			.singleton('sut', ({ a }) => ({ a }))
 			.mock()
-		expect(alice.id).toBeTruthy()
-		expect(() => bob.alice.id).toThrowError(new ShouldBeMockedDependencyError('alice', 'id', 'get'))
+		expect(a.id).toBeTruthy()
+		expect(sut.a.id).toBeNull()
 	})
-	test('Forget mocking, throw error', () => {
-		const { bob } = dummy()
-			.singleton('alice')
-			.singleton('bob', ({ alice }) => ({ alice }))
-			.mock()
-		expect(() => bob.alice.func()).toThrowError(new ShouldBeMockedDependencyError('alice', 'func', 'get'))
-		expect(() => bob.alice.getter).toThrowError(new ShouldBeMockedDependencyError('alice', 'getter', 'get'))
-		expect(() => bob.alice.setter = 1).toThrowError(new ShouldBeMockedDependencyError('alice', 'setter', 'set'))
+	
+	test('Given mock strategy should be followed', () => {
+		const { sut } = dummy()
+			.singleton('a')
+			.singleton('sut', ({ a }) => ({ a }))
+			.mock({}, MockStrategy.exceptionStub)
+		expect(() => sut.a.id).toThrowError(new ShouldBeMockedDependencyError('a', 'id', 'get'))
 	})
-	test('Mocked dependencies, succeed', () => {
-		// noinspection JSUnusedLocalSymbols
-		const mock = {
-			func: () => UUID.randomUUID(),
-			get getter() { return UUID.randomUUID() },
-			set setter(v: any) { },
-		}
-		const spyFunc = jest.spyOn(mock, 'func')
-		const spyGet = jest.spyOn(mock, 'getter', 'get')
-		const spySet = jest.spyOn(mock, 'setter', 'set')
-		
-		const { bob } = dummy()
-			.singleton('alice')
-			.singleton('bob', ({ alice }) => ({ alice }))
-			.mock({ alice: mock })
-		
-		expect(bob.alice.func()).toBeTruthy()
-		expect(bob.alice.getter).toBeTruthy()
-		expect(bob.alice.setter = 1).toBeTruthy()
-		expect(spyFunc).toBeCalledTimes(1)
-		expect(spyGet).toBeCalledTimes(1)
-		expect(spySet).toBeCalledTimes(1)
+	
+	test('Dependency mock strategy should be followed', () => {
+		const { sut } = dummy()
+			.singleton('a')
+			.singleton('b')
+			.singleton('c')
+			.singleton('sut', ({ a, b, c }) => ({ a, b, c }))
+			.mock({
+				a: MockStrategy.dummyStub,
+				b: MockStrategy.exceptionStub,
+				c: { id: UUID.randomUUID() },
+			})
+		expect(sut.a.id).toBeNull()
+		expect(() => sut.b.id).toThrowError(new ShouldBeMockedDependencyError('b', 'id', 'get'))
+		expect(sut.c.id).toBeTruthy()
+		sut.c.id = 'cake'
+		expect(sut.c.id).toBe('cake')
 	})
+	
+	test('Property mock strategy should be followed', () => {
+		const { sut } = dummy()
+			.singleton('a')
+			.singleton('sut', ({ a }) => ({ a }))
+			.mock({
+				a: {
+					id: MockStrategy.nullStub,
+					func: MockStrategy.exceptionStub,
+					get getter() { return UUID.randomUUID() },
+				},
+			})
+		expect(sut.a.id).toBeNull()
+		expect(() => sut.a.func()).toThrowError(new ShouldBeMockedDependencyError('a', 'func', 'function'))
+		expect(sut.getter).toBeTruthy()
+	})
+	
 	test('Stateful instance should be given mocked dependencies', () => {
 		const { stateful } = dummy()
 			.scoped('scoped', ({ stateful }) => ({ stateful }), 'stateful')
 			.stateful('stateful', ({ stateful, scoped }) => ({ stateful, scoped }))
-			.mock()
+			.mock(MockStrategy.exceptionStub)
 		expect(() => stateful.create().scoped.stateful)
 			.toThrowError(new ShouldBeMockedDependencyError('scoped', 'stateful', 'get'))
 	})
+	
 	test('Service with Stateful dependency should be given mocked Stateful', () => {
 		const { scoped } = dummy()
 			.stateful('stateful', ({ stateful }) => ({ stateful }))
 			.scoped('scoped', ({ stateful }) => ({ stateful }))
-			.mock()
+			.mock(MockStrategy.exceptionStub)
 		expect(() => scoped.stateful.create())
-			.toThrowError(new ShouldBeMockedDependencyError('stateful', 'create', 'get'))
+			.toThrowError(new ShouldBeMockedDependencyError('stateful', 'create', 'function'))
 	})
 })
