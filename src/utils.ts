@@ -7,8 +7,13 @@ export const Services = () => new ServiceCollection()
 
 const _propertyOf = new Proxy({}, { get: (_, p) => p }) as any
 
+export type Dependency<K extends string, T> = { [key in K]: T }
 export type ServiceProviderOf<T extends IServiceProvider> = T['proxy']
 export type ServiceCollectionOf<T extends ServiceCollection<any>> = ServiceProviderOf<ReturnType<T['build']>>
+export type FunctionOf<T extends (() => ServiceCollection<any>) | (() => IServiceProvider)> =
+	ReturnType<T> extends IServiceProvider ? ServiceProviderOf<ReturnType<T>>
+		: ReturnType<T> extends ServiceCollection<any> ? ServiceCollectionOf<ReturnType<T>>
+			: never
 
 export const propertyOf = <T>() => _propertyOf as PropertyOf<T>
 

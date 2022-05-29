@@ -1,4 +1,4 @@
-import { Factory, Key } from '../ServiceCollection'
+import { Factory, Key, LifetimeConstructor } from '../ServiceCollection'
 import { ScopedServiceProvider } from '../ServiceProvider'
 import { ILifetime } from './ILifetime'
 
@@ -18,5 +18,9 @@ export class Transient<T, E> implements ILifetime<T, E> {
 	
 	clone(): ILifetime<T, E> {
 		return new Transient(this.name, this.factory)
+	}
+	
+	get Lifetime(): LifetimeConstructor<T, E> {
+		return Transient
 	}
 }

@@ -100,6 +100,15 @@ export class ServiceCollection<E = {}> {
 		return new ServiceCollection<{ [key in keyof Provided]: Provided[key] }>(this.self)
 	}
 	
+	replace<T>(selector: Selector<T, E>, Dependency: DependencyOptions<T, E>) {
+		const name = extractSelector(selector)
+		const factory = this.extractFactory(Dependency)
+		const Lifetime = this.lifetimes[name].Lifetime
+		
+		this.lifetimes[name] = new Lifetime(name, factory)
+		return this
+	}
+	
 	build(): IServiceProvider<E> {
 		return new ServiceProvider<E>(this.cloneLifetimes())
 	}
