@@ -30,7 +30,8 @@ export enum MockStrategy {
 	exceptionStub = 'exceptionStub',
 }
 
-type PropertyMock<T> = { [key in keyof T]?: T[key] | MockStrategy | null | (() => null) }
+type PartialNested<T> = { [key in keyof T]?: T[key] extends object ? PartialNested<T[key]> : T[key] }
+type PropertyMock<T> = { [key in keyof T]?: PartialNested<T[key]> | MockStrategy | null | (() => null) }
 type DependencyMock<E, K extends keyof E> =
 	| Partial<PropertyMock<E[K]>>
 	| Factory<Partial<PropertyMock<E[K]>>, E>
