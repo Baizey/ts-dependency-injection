@@ -14,44 +14,46 @@ Simple type strong dependency injection
 ## Quick start
 
 ```
-type AliceDep = { c: string }
-class Alice {
-    c: string
-    constructor({ c }: AliceDep){
-      this.c = c
-    }
+// Class with no dependencies
+class Alice { ... }
+
+// Class with dependencies
+type BobDep = { alice: Alice, fixedName: string }
+class Bob {
+    ...
+    constructor({ alice }: BobDep){ ... }
 }
-type BobDep = { alice: Alice }
-class Bob implements IBob {
-    alice: Alice
-    constructor({ alice }: BobDep){
-      this.alice = alice
-    }
-}
-type SomethingDep = { bob: IBob }
+
+// Stateful class
+type SomethingDep = { ... }
 type SomethingProps = { ... }
 class Something {
     props: SomethingProps
     bob: IBob
-    constructor({bob}: SomethingDep, props: SomethingProps){
-      this.bob = bob
-      this.props = props
-    }
+    constructor(dependencies: SomethingDep, props: SomethingProps){ ... }
 }
 
-// Note, the service collection is smart so it will know if you add Bob without having added Alice and do a type-complaining
-// You should never touch the generics on any ServiceCollection method unless you know what you do, they're doing black magic to let typescript know whats happening
+
 const services = Services() // or new ServiceCollection()
-  .addSingleton('c', { factory: () => 'Hello world' })
-  .addScoped('alice', Alice)
-  .addTransient('bob', Bob)
-  .addStateful('somethingFactory', Something)
+  // Add multiple dependencies at ones
+  // This is required if you're adding 10+ dependencies, otherwise TS itself will struggle known whats provided
+  .add({
+    alice: singleton(Alice),
+    fixedName: singleton({ factory: () => 'text' }),
+  })
+  // Chain adding as required
+  .add({
+    bob: scoped(Bob),
+    somethingFactory: stateful(Something),
+  })
+
+// Building a provider is simple and each build will be completly independent of each other
 const provider = services.build();
 
-// All of these are equivilent and typestrong methods for getting services provided
+// All of these ways of providing instances are equivilent, note they are all type-strong so the ide can guide you
 const bob = provider.provide(p => p.bob)
 const alice = provider.provide('alice')
-const { alice, bob, c } = provider.proxy
+const { alice, bob, somethingFactory } = provider.proxy
 ```
 
 # API
@@ -60,36 +62,35 @@ const { alice, bob, c } = provider.proxy
 
 ```
 Generics used throughout:
-T is always the type being provided by a lifetime
+T is the type being provided by a lifetime, note that statefuls are actually Stateful<Prop, T>
 E is always your custom class dictating which dependencies the ServiceCollection will require to be added
-P is props for any stateful dependencies
+P is props for any stateful dependencies, for any non-stateful this will be defaulted as void/undefined
 KE is an extra generic to allow typescript to figure stuff out, with an unknown object having a key to either add or remove from E  
     
-LifeTimeConstructor<T, E> =
-    | { new(name: keyof E & (string | symbol), factory: (p: E) => T): ILifetime<T, E> }
-    | Singleton 
-    | Scoped 
-    | Transient
-    
-StatefulDependencyOptions<T, P, E>: 
-    | StatefulDependencyConstructor<T, P, E> 
-    | { factory: (provider: E, props: P) => T }
-  
-StatefulDependencyConstructor<T, E>: 
-    | DependencyConstructor<T, E>
-    | { new(provider: E, props: P): T }
-      
-DependencyOptions<T, E>: 
-    | DependencyConstructor<T, E> 
-    | { factory: (p: E) => T }
+type Key<E> = keyof E & (string)
 
-DependencyConstructor<T, E>: 
-    | { new(): T } 
-    | { new(provider: E): T }
-    
-Selector<T, E, KE>: 
-    | keyof E & (string | symbol)
-    | ({...[key in keyof E as E[key] extends T]}) => keyof E
+type LifetimeCollection<E = any> = { [key in keyof E]: ILifetime<unknown, E> }
+type MatchingProperties<T, E> = { [K in keyof E]: E[K] extends T ? K : never }[keyof E]
+type SelectorOptions<T = any, E = any> = { [key in MatchingProperties<T, E>]: key & Key<E> }
+type Selector<T, E> = Key<E> | (( e: SelectorOptions<T, E> ) => Key<E>)
+
+type Stateful<P, T> = { create( props: P ): T }
+
+type Factory<T, P, E> = ( provider: E, props: P, scope: ScopedServiceProvider<E> ) => T
+
+type LifetimeConstructor<T = any, P = void, E = any> =
+	{ new( name: Key<E>, factory: Factory<T, P, E> ): ILifetime<T, E> }
+	
+type StatefulConstructor<T, P, E> = { new( provider: E, props: P ): T }
+
+type NormalConstructor<T, E> = { new( provider: E ): T } | { new(): T }
+
+type FactoryOption<T, P, E> = { factory: Factory<T, P, E> }
+type ConstructorOption<T, E> = { constructor: NormalConstructor<T, E> }
+type DependencyOption<T, E> = FactoryOption<T, void, E> | ConstructorOption<T, E>
+type DependencyInformation<T, E> = { lifetime: LifetimeConstructor } & DependencyOption<T, E>
+
+type DependencyMap<E, F> = { [key in keyof F]: DependencyInformation<F[key], any> }
 ```
 
 ## ServiceCollection<E>
@@ -102,21 +103,15 @@ alternative: use `Services()` as a provided quick-create method
 
 ### Add
 
-`add<T, KE>(LifeTimeConstructor<T, E>, keyof KE & string, DependencyOptions<T, E>)`
+`add<KT, F extends DependencyMap<E, KT>>( dependencies: F & DependencyMap<E, KT> )`
 
-Generic `KE` is here to allow typescript to know what's going on, it should not be manually set
+Generic `KT` and `F` is here to allow typescript to do magic, they should never be used manually
 
-Returns `ServiceCollection<{ [key in KE]: T } & E>`
+Returns `ServiceCollection<E & KT>`
 
 Can throw
 
 - `DuplicateDependencyError` if the resolved name from `DependencyOptions` has already been added
-
-Alternatives:
-
-- `addSingleton<T, KE>(keyof KE & string, DependencyOptions<T, E>)`
-- `addScoped<T, KE>(keyof KE & string, DependencyOptions<T, E>)`
-- `addTransient<T, KE>(keyof KE & string, DependencyOptions<T, E>)`
 
 ### Get
 
@@ -126,9 +121,9 @@ returns `ILifetime<T, E> | undefined`
 
 ### Remove
 
-- `remove<T, KE>(Selector<T, E, KE>)`
+- `remove<T, K>(Selector<T, E>)`
 
-returns `ServiceCollection<Omit<E, keyof KE>>`
+returns `ServiceCollection<Omit<E, K>>`
 
 ### Build
 
@@ -138,12 +133,36 @@ returns `IServiceProvider<T, E>`
 
 ### BuildMock
 
-This is only meant for testing, it will provide a IServiceProvider similar to `build()` except that any dependencies
-will be forcefully mocked
+This is only meant for testing, it will provide a IServiceProvider similar to `build()`
 
-- `buildMock(setup?: { [key in keyof E]: Partial<E[key]> | Factory<T, E>})`
+except that only the directly provided dependencies will be given normally, anything they depend on will be mocked
+
+How this mocking occurs can be modified via the setup
+
+Note if you give a `MockStrategy` as first argument is as if you only gave `defaultMockType` with that value
+
+- `buildMock(mock: MockStrategy | ProviderMock<E> = {}, defaultMockType?: MockStrategy)`
 
 returns `IServiceProvider<T, E>`
+
+#### Types involved
+
+This wont be easily understandable, but it describes all the possibilities for mocking
+
+````
+type PartialNested<T> = { [key in keyof T]?: T[key] extends object ? PartialNested<T[key]> : T[key] }
+type PropertyMock<T> = { [key in keyof T]?: PartialNested<T[key]> | MockStrategy | null | (() => null) }
+type DependencyMock<E, K extends keyof E> =
+  | Partial<PropertyMock<E[K]>>
+  | Factory<Partial<PropertyMock<E[K]>>, any, E>
+  | MockStrategy
+type ProviderMock<E> = { [key in keyof E]?: DependencyMock<E, key> };
+enum MockStrategy {
+  dummyStub = 'dummyStub', // All getter/setter works, but default value is null
+  nullStub = 'nullStub', // All setters are ignored, and getters return null
+  exceptionStub = 'exceptionStub', // All getters and setters throw exception
+}
+````
 
 ## IServiceProvider<E>
 
@@ -173,6 +192,7 @@ Can throw
 - ``Singleton``, 1 to rule all
 - ``Scoped``, 1 per request
 - ``Transient``, always a new one
+- ``Stateful``, always a new one, returns `Stateful<P, T>` which is equivalent to `{ create(p: P) => T }`
 
 ### Provide
 

@@ -1,10 +1,10 @@
 ﻿import 'jest'
-import { Transient } from '../../src'
+import { TransientLifetime } from '../../src/Lifetime/TransientLifetime'
 import { Context, Lifetime, propertyOfLifetime, UUID } from '../testUtils'
 
 describe(propertyOfLifetime.provide, () => {
 	test('Never returns the same, even if same context', () => {
-		const sut = Lifetime(Transient)
+		const sut = Lifetime( TransientLifetime )
 		const context = Context()
 		
 		const expected = sut.provide(context)
@@ -16,7 +16,7 @@ describe(propertyOfLifetime.provide, () => {
 	test('Ignores anything in scoped', () => {
 		const notExpected = UUID.randomUUID()
 		const context = Context()
-		const sut = Lifetime(Transient)
+		const sut = Lifetime( TransientLifetime )
 		context.instances[sut.name] = notExpected
 		
 		const actual = sut.provide(context)
@@ -26,5 +26,5 @@ describe(propertyOfLifetime.provide, () => {
 })
 
 describe(propertyOfLifetime.isSingleton, () => {
-	test('should be false', () => expect(Lifetime(Transient).isSingleton).toBeFalsy())
+	test( 'should be false', () => expect( Lifetime( TransientLifetime ).isSingleton ).toBeFalsy() )
 })

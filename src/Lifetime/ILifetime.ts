@@ -1,4 +1,4 @@
-import { Key, LifetimeConstructor } from '../ServiceCollection'
+import { Key } from '../ServiceCollection'
 import { ScopedServiceProvider } from '../ServiceProvider'
 
 export interface DependencyInfo<E = any> {
@@ -6,10 +6,8 @@ export interface DependencyInfo<E = any> {
 	readonly isSingleton?: boolean
 }
 
-export interface ILifetime<T = any, E = any> extends DependencyInfo<E> {
-	provide(context: ScopedServiceProvider<E>): T
-	
-	get Lifetime(): LifetimeConstructor<T, E>
+export interface ILifetime<T, E> extends DependencyInfo<E> {
+	provide( context: ScopedServiceProvider<E> ): T
 	
 	clone(): ILifetime<T, E>
 }
@@ -21,9 +19,8 @@ export class Lifetime {
 	
 	static dummy<E = any>(name: Key<E>, isSingleton?: boolean): ILifetime<null, E> {
 		return {
-			clone() { return this },
+			clone() { return null as unknown as ILifetime<null, E> },
 			provide() { return null },
-			get Lifetime() { return null as any },
 			name,
 			isSingleton,
 		}

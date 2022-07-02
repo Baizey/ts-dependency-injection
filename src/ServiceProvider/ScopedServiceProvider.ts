@@ -14,17 +14,17 @@ export class ScopedServiceProvider<E = any> implements IServiceProvider<E> {
 	private readonly lookup: Record<Key<any>, DependencyInfo> = {}
 	private readonly ordered: DependencyInfo[] = []
 	
-	constructor(parent: IServiceProvider<E>, lifetime?: ILifetime) {
+	constructor( parent: IServiceProvider<E>, lifetime?: ILifetime<unknown, E> ) {
 		this.parent = parent
 		this.root = parent.root
 		this.lifetimes = parent.lifetimes
-		this.proxy = proxyOf(this)
+		this.proxy = proxyOf( this )
 		
 		if (parent instanceof ScopedServiceProvider) {
 			this.instances = parent.instances
 			this._lastSingleton = parent.lastSingleton
 			this.lookup = { ...parent.lookup }
-			this.ordered = parent.ordered.map(e => e)
+			this.ordered = parent.ordered.map( e => e )
 		} else {
 			this.instances = {}
 		}
@@ -60,12 +60,12 @@ export class ScopedServiceProvider<E = any> implements IServiceProvider<E> {
 		const context = new ScopedServiceProvider(this, lifetime)
 		const result = lifetime.provide(context)
 		context._isDone = true
-		return result
+		return result as T
 	}
 	
-	enter(lifetime: ILifetime | Falsy) {
+	enter( lifetime: ILifetime<any, E> | Falsy ) {
 		if (!lifetime) return this
-		return new ScopedServiceProvider<E>(this, lifetime)
+		return new ScopedServiceProvider<E>( this, lifetime )
 	}
 	
 	private _enter(lifetime: DependencyInfo) {

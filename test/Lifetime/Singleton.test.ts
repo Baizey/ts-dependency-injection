@@ -1,10 +1,10 @@
 ﻿import 'jest'
-import { Singleton } from '../../src'
+import { SingletonLifetime } from '../../src/Lifetime/SingletonLifetime'
 import { Context, Lifetime, propertyOfLifetime, Provider, UUID } from '../testUtils'
 
 describe(propertyOfLifetime.provide, () => {
 	test('Always returns the same with same root provider', () => {
-		const sut = Lifetime(Singleton)
+		const sut = Lifetime( SingletonLifetime )
 		const provider = Provider()
 		provider.lifetimes[sut.name] = sut
 		
@@ -17,7 +17,7 @@ describe(propertyOfLifetime.provide, () => {
 	test('Ignores anything in scoped', () => {
 		const notExpected = UUID.randomUUID()
 		const context = Context()
-		const sut = Lifetime(Singleton)
+		const sut = Lifetime( SingletonLifetime )
 		context.instances[sut.name] = notExpected
 		
 		const actual = sut.provide(context)
@@ -26,7 +26,7 @@ describe(propertyOfLifetime.provide, () => {
 	})
 	
 	test('Twice in same context returns same', () => {
-		const sut = Lifetime(Singleton)
+		const sut = Lifetime( SingletonLifetime )
 		const context = Context()
 		
 		const expected = sut.provide(context)
@@ -37,5 +37,5 @@ describe(propertyOfLifetime.provide, () => {
 })
 
 describe(propertyOfLifetime.isSingleton, () => {
-	test('should be true', () => expect(Lifetime(Singleton).isSingleton).toBeTruthy())
+	test( 'should be true', () => expect( Lifetime( SingletonLifetime ).isSingleton ).toBeTruthy() )
 })

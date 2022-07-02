@@ -34,7 +34,7 @@ type PartialNested<T> = { [key in keyof T]?: T[key] extends object ? PartialNest
 type PropertyMock<T> = { [key in keyof T]?: PartialNested<T[key]> | MockStrategy | null | (() => null) }
 type DependencyMock<E, K extends keyof E> =
 	| Partial<PropertyMock<E[K]>>
-	| Factory<Partial<PropertyMock<E[K]>>, E>
+	| Factory<Partial<PropertyMock<E[K]>>, any, E>
 	| MockStrategy
 export type ProviderMock<E> = { [key in keyof E]?: DependencyMock<E, key> };
 
@@ -42,7 +42,7 @@ export function proxyLifetimes<E>(services: ServiceCollection<E>,
                                   providerMock: MockStrategy | ProviderMock<E>,
                                   defaultMock: MockStrategy = MockStrategy.nullStub) {
 	
-	if (typeof providerMock === 'string') { defaultMock = providerMock }
+	if (typeof providerMock === 'string') { defaultMock = providerMock as MockStrategy }
 	const dependencyMock: ProviderMock<E> = (typeof providerMock === 'string') ? {} : providerMock
 	
 	const provider = services.build()
@@ -54,7 +54,7 @@ export function proxyLifetimes<E>(services: ServiceCollection<E>,
 	return provider
 }
 
-const provide = propertyOf<ILifetime>().provide
+const provide = propertyOf<ILifetime<unknown, any>>().provide
 
 export function proxyLifetime<E>(
 	lifetime: ILifetime<unknown, E>,
@@ -72,11 +72,14 @@ export function proxyLifetime<E>(
 				
 				switch (typeof dependencyMock) {
 					case 'string':
-						return mockDependency(name, shadow, {}, dependencyMock)
+						return mockDependency( name, shadow, {}, dependencyMock as MockStrategy )
 					case 'function':
-						return mockDependency(name, shadow, dependencyMock(context.proxy, context), defaultMock)
+						return mockDependency( name,
+							shadow,
+							dependencyMock( context.proxy, undefined, context ),
+							defaultMock )
 					case 'object':
-						return mockDependency(name, shadow, dependencyMock, defaultMock)
+						return mockDependency( name, shadow, dependencyMock, defaultMock )
 					default:
 						return mockDependency(name, shadow, {}, defaultMock)
 				}

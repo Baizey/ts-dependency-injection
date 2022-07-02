@@ -1,56 +1,77 @@
-import { CircularDependencyError, propertyOf, Services, SingletonScopedDependencyError, Stateful } from '../../src'
-import { dummy } from '../testUtils'
+import {
+	CircularDependencyError,
+	propertyOf,
+	scoped,
+	Services,
+	singleton,
+	SingletonScopedDependencyError,
+	stateful,
+	Stateful,
+	transient,
+} from '../../src'
+import { dummy, dummyClass } from '../testUtils'
 
 const propertyOfStateful = propertyOf<Stateful<any, any>>()
 
 class A {}
 
 class B { // noinspection JSUnusedLocalSymbols
-	constructor(a: { a: A }, b: number) {}
+	constructor( a: { a: A }, b: number ) {}
 }
 
 class C {// noinspection JSUnusedLocalSymbols
-	constructor(a: { a: A, c: Stateful<number, C> }, b: number) {}
+	constructor( a: { a: A, c: Stateful<number, C> }, b: number ) {}
 }
 
-describe(propertyOfStateful.create, () => {
-	
-	test('Stateful factory can depend on itself', () => {
+describe( propertyOfStateful.create, () => {
+	test( 'Stateful factory can depend on itself', () => {
 		const { b } = Services()
-			.addSingleton('a', A)
-			.addSingleton('aa', A)
-			.addStateful('b', B)
-			.addStateful('c', C)
+			.add( {
+				a: singleton( A ),
+				aa: singleton( A ),
+				b: stateful( B ),
+				c: stateful( C ),
+			} )
 			.build().proxy
-		expect(b.create(6)).toBeTruthy()
-	})
+		expect( b.create( 6 ) ).toBeTruthy()
+	} )
 	
-	test('Using circular factory in constructor gives circular error', () => {
-		const { circular } = dummy()
-			.stateful('circular', ({ circular }) => { circular.create() })
+	test( 'Using circular factory in constructor gives circular error', () => {
+		const sut = dummy()
+			.add( {
+				circular: stateful( dummyClass( ( { circular } ) => { circular.create() } ) ),
+			} )
 			.build()
-		expect(() => circular.create())
-			.toThrowError(new CircularDependencyError('circular#',
-				['circular#1', 'circular#']))
-	})
+			.circular
+		expect( () => sut.create() )
+			.toThrowError( new CircularDependencyError( 'circular#',
+				['circular#1', 'circular#'] ) )
+	} )
 	
-	test('Singleton dependency chain has scope restraints', () => {
-		const { singleton } = dummy()
-			.scoped('scoped')
-			.stateful('stateful', ({ stateful, scoped }) => ({ stateful, scoped }))
-			.singleton('singleton', ({ stateful }) => ({ stateful }))
+	test( 'Singleton dependency chain has scope restraints', () => {
+		const sut = dummy()
+			.add( {
+				scoped: scoped( dummyClass() ),
+				stateful: stateful( dummyClass( ( { stateful, scoped } ) => ({ stateful, scoped }) ) ),
+				singleton: singleton( dummyClass( ( { stateful } ) => ({ stateful }) ) ),
+			} )
 			.build()
-		expect(() => singleton.stateful.create())
-			.toThrowError(new SingletonScopedDependencyError('singleton@stateful#1', 'scoped'))
-	})
+			.singleton
+		
+		expect( () => sut.stateful.create() )
+			.toThrowError( new SingletonScopedDependencyError( 'singleton@stateful#1', 'scoped' ) )
+	} )
 	
-	test('Non-singleton dependency chain has no scope restraints', () => {
-		const { transient } = dummy()
-			.scoped('scoped')
-			.stateful('stateful', ({ stateful, scoped }) => ({ stateful, scoped }))
-			.transient('transient', ({ stateful }) => ({ stateful }))
+	test( 'Non-singleton dependency chain has no scope restraints', () => {
+		const sut = dummy()
+			.add( {
+				scoped: scoped( dummyClass() ),
+				stateful: stateful( dummyClass( ( { stateful, scoped } ) => ({ stateful, scoped }) ) ),
+				transient: transient( dummyClass( ( { stateful } ) => ({ stateful }) ) ),
+			} )
 			.build()
-		expect(transient.stateful.create())
+			.transient
+		expect( sut.stateful.create() )
 			.toBeTruthy()
-	})
-})
+	} )
+} )

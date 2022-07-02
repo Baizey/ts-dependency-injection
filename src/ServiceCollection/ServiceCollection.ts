@@ -1,134 +1,62 @@
 import { DuplicateDependencyError } from '../Errors'
-import { ILifetime, Lifetime, Scoped, Singleton, Transient } from '../Lifetime'
-import { IServiceProvider, ScopedServiceProvider, ServiceProvider } from '../ServiceProvider'
+import { ILifetime } from '../Lifetime'
+import { IServiceProvider, ServiceProvider } from '../ServiceProvider'
 import { extractSelector } from '../utils'
 import { MockStrategy, ProviderMock, proxyLifetimes } from './mockUtils'
-import {
-	DependencyOptions,
-	Factory,
-	Key,
-	LifetimeCollection,
-	LifetimeConstructor,
-	Selector,
-	Stateful,
-	StatefulDependencyOptions,
-} from './types'
+import { DependencyInformation, DependencyMap, LifetimeCollection, Selector } from './types'
 
 export class ServiceCollection<E = {}> {
 	private readonly self: ServiceCollection<any>
 	private readonly lifetimes: LifetimeCollection
 	
-	constructor(other?: ServiceCollection, lifetime?: ILifetime<any, E>) {
+	constructor() {
 		this.self = this
-		this.lifetimes = other?.lifetimes ?? {}
-		if (lifetime) this.lifetimes[lifetime.name] = lifetime
+		this.lifetimes = {}
 	}
 	
-	addMultiple<T>(func: (services: ServiceCollection<E>) => ServiceCollection<T>) {
-		return func(this)
-	}
-	
-	addStateful<T, P, K extends string>(
-		name: K & (K extends keyof E ? never : any),
-		Dependency: StatefulDependencyOptions<T, P, { [key in ((keyof E) | K)]: key extends keyof E ? E[key] : Stateful<P, T> }>,
-	) {
-		const last = Lifetime.dummy(`${name}@constructor`)
+	add<KT, F extends DependencyMap<E, KT>>( dependencies: F & DependencyMap<E, KT> ) {
+		Object.entries<DependencyInformation<unknown, any>>( dependencies ).forEach( ( [name, data] ) => {
+			if (name in this.lifetimes) throw new DuplicateDependencyError( name )
+			
+			const factory = 'factory' in data ?
+				data.factory :
+				// @ts-ignore don't touch-a ma spageht (the factory can be either p => new ... or (p, props) => new ... but ts dont know the second option
+				( p: any, props: any ) => new data.constructor( p, props )
+			
+			const { lifetime: Lifetime } = data
+			this.lifetimes[name] = new Lifetime( name, factory )
+		} )
 		
-		const factory = typeof Dependency === 'function'
-			? (provider: E, props: P) => new Dependency(provider as any, props)
-			: Dependency.factory
-		
-		function next({ instances }: ScopedServiceProvider): number {
-			instances[name] = instances[name] || 1
-			return instances[name]++
-		}
-		
-		return this.add<Stateful<P, T>, K>(Transient, name as any, {
-			factory: (proxy, context) => {
-				const parentContext = context.parent as ScopedServiceProvider<E>
-				const { isSingleton, name: lastName } = context.lastSingleton ?? {}
-				const singleton = lastName ? `${String(lastName)}@` : ''
-				
-				const escapedContext = new ScopedServiceProvider(context.root)
-					.enter(parentContext.depth && last)
-					.enter(Lifetime.dummy(`${singleton}${name}#${next(context)}`, isSingleton))
-				const trappedContext = parentContext.enter(Lifetime.dummy(`${name}#`))
-				
-				return {
-					create: (props: P) => {
-						const context = parentContext.isDone || !parentContext.depth ? escapedContext : trappedContext
-						return factory(context.proxy as any, props, context as any)
-					},
-				}
-			},
-		})
+		return this as unknown as ServiceCollection<{
+			[key in (keyof KT | keyof E)]:
+			key extends keyof E
+				? E[key] : key extends keyof KT
+					? KT[key]
+					: never
+		}>
 	}
 	
-	addSingleton<T, K extends string>(name: K & (K extends keyof E ? never : any),
-	                                  Dependency: DependencyOptions<T, E>) {
-		return this.add<T, K>(Singleton, name, Dependency)
+	get<T>( selector: Selector<T, E> ): ILifetime<T, E> | undefined {
+		return this.lifetimes[extractSelector( selector )] as ILifetime<T, E>
 	}
 	
-	addScoped<T, K extends string>(name: K & (K extends keyof E ? never : any),
-	                               Dependency: DependencyOptions<T, E>) {
-		return this.add<T, K>(Scoped, name, Dependency)
-	}
-	
-	addTransient<T, K extends string>(name: K & (K extends keyof E ? never : any),
-	                                  Dependency: DependencyOptions<T, E>) {
-		return this.add<T, K>(Transient, name, Dependency)
-	}
-	
-	add<T, K extends string>(Lifetime: LifetimeConstructor,
-	                         name: K & (K extends keyof E ? never : any),
-	                         Dependency: DependencyOptions<T, E>,
-	) {
-		if (name in this.lifetimes) throw new DuplicateDependencyError(name)
-		type Provided = { [key in ((keyof E) | K)]: key extends keyof E ? E[key] : T }
-		return new ServiceCollection<{ [key in keyof Provided]: Provided[key] }>(
-			this.self,
-			new Lifetime(name, this.extractFactory(Dependency)))
-	}
-	
-	get<T>(selector: Selector<T, E>): ILifetime<T, E> | undefined {
-		return this.lifetimes[extractSelector(selector)] as ILifetime<T, E>
-	}
-	
-	remove<T, K extends string>(selector: Selector<T, E>) {
-		delete this.lifetimes[extractSelector(selector)]
+	remove<T, K extends string>( selector: Selector<T, E> ) {
+		delete this.lifetimes[extractSelector( selector )]
 		type Provided = { [key in keyof Omit<E, K>]: key extends keyof E ? E[key] : T }
-		return new ServiceCollection<{ [key in keyof Provided]: Provided[key] }>(this.self)
-	}
-	
-	replace<T>(selector: Selector<T, E>, Dependency: DependencyOptions<T, E>) {
-		const name = extractSelector(selector)
-		const factory = this.extractFactory(Dependency)
-		const Lifetime = this.lifetimes[name].Lifetime
-		
-		this.lifetimes[name] = new Lifetime(name, factory)
-		return this
+		return this as unknown as ServiceCollection<{ [key in keyof Provided]: Provided[key] }>
 	}
 	
 	build(): IServiceProvider<E> {
-		return new ServiceProvider<E>(this.cloneLifetimes())
+		const lifetimes = Object.values( this.lifetimes )
+			.map( ( e: ILifetime<any, E> ) => e.clone() )
+			.reduce( ( a, b ) => {
+				a[b.name] = b
+				return a
+			}, {} as LifetimeCollection )
+		return new ServiceProvider<E>( lifetimes )
 	}
 	
-	buildMock(mock: MockStrategy | ProviderMock<E> = {}, defaultMockType?: MockStrategy): IServiceProvider<E> {
-		return proxyLifetimes(this, mock, defaultMockType)
-	}
-	
-	private extractFactory<T>(Option: DependencyOptions<T, E>): Factory<T, E> {
-		return typeof Option === 'function'
-			? provider => new Option(provider)
-			: Option.factory
-	}
-	
-	private cloneLifetimes(): LifetimeCollection<E> {
-		return Object.entries<ILifetime<unknown, E>>(this.lifetimes)
-			.map(([key, value]) => [key, value.clone()] as [Key<E>, ILifetime<unknown, E>])
-			.reduce((acc, [key, value]) => {
-				acc[key] = value
-				return acc
-			}, {} as LifetimeCollection)
+	buildMock( mock: MockStrategy | ProviderMock<E> = {}, defaultMockType?: MockStrategy ): IServiceProvider<E> {
+		return proxyLifetimes( this, mock, defaultMockType )
 	}
 }
