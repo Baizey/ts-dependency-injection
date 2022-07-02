@@ -3,7 +3,7 @@ import { ILifetime } from '../Lifetime'
 import { ScopedServiceProvider } from '../ServiceProvider'
 import { propertyOf } from '../utils'
 import { ServiceCollection } from './ServiceCollection'
-import { Factory, Key } from './types'
+import { DependencyFactory, Key } from './types'
 
 export enum MockStrategy {
 	/**
@@ -34,7 +34,7 @@ type PartialNested<T> = { [key in keyof T]?: T[key] extends object ? PartialNest
 type PropertyMock<T> = { [key in keyof T]?: PartialNested<T[key]> | MockStrategy | null | (() => null) }
 type DependencyMock<E, K extends keyof E> =
 	| Partial<PropertyMock<E[K]>>
-	| Factory<Partial<PropertyMock<E[K]>>, any, E>
+	| DependencyFactory<Partial<PropertyMock<E[K]>>, any, E>
 	| MockStrategy
 export type ProviderMock<E> = { [key in keyof E]?: DependencyMock<E, key> };
 

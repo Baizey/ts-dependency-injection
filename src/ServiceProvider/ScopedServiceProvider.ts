@@ -29,7 +29,7 @@ export class ScopedServiceProvider<E = any> implements IServiceProvider<E> {
 			this.instances = {}
 		}
 		
-		if (lifetime) this._enter(lifetime)
+		if (lifetime) this._enter( lifetime )
 	}
 	
 	readonly lifetimes: LifetimeCollection<E>
@@ -50,15 +50,15 @@ export class ScopedServiceProvider<E = any> implements IServiceProvider<E> {
 		return this._lastSingleton
 	}
 	
-	using(action: (provider: E) => any): void {
-		action(this.proxy)
+	using( action: ( provider: E ) => any ): void {
+		action( this.proxy )
 		this._isDone = true
 	}
 	
-	provide<T>(selector: Selector<T, E>): T {
-		const lifetime = this.getLifetime(selector)
-		const context = new ScopedServiceProvider(this, lifetime)
-		const result = lifetime.provide(context)
+	provide<T>( selector: Selector<T, E> ): T {
+		const lifetime = this.getLifetime( selector )
+		const context = new ScopedServiceProvider( this, lifetime )
+		const result = lifetime.provide( context )
 		context._isDone = true
 		return result as T
 	}
@@ -68,23 +68,23 @@ export class ScopedServiceProvider<E = any> implements IServiceProvider<E> {
 		return new ScopedServiceProvider<E>( this, lifetime )
 	}
 	
-	private _enter(lifetime: DependencyInfo) {
+	private _enter( lifetime: DependencyInfo ) {
 		if (lifetime.name in this.lookup) {
 			throw new CircularDependencyError(
 				lifetime.name,
-				this.ordered.map(e => e.name))
+				this.ordered.map( e => e.name ) )
 		}
-		this.ordered.push(lifetime)
+		this.ordered.push( lifetime )
 		this._lastSingleton = lifetime.isSingleton
 			? lifetime
 			: this._lastSingleton
 		this.lookup[lifetime.name] = lifetime
 	}
 	
-	private getLifetime<T>(selector: Selector<T, E>) {
-		const key = extractSelector(selector)
+	private getLifetime<T>( selector: Selector<T, E> ) {
+		const key = extractSelector( selector )
 		const lifetime = this.lifetimes[key] as ILifetime<T, E>
-		if (!lifetime) throw new ExistenceDependencyError(key)
+		if (!lifetime) throw new ExistenceDependencyError( key )
 		return lifetime
 	}
 }

@@ -17,9 +17,9 @@ export class Lifetime {
 	// noinspection JSUnusedLocalSymbols
 	private constructor() {}
 	
-	static dummy<E = any>(name: Key<E>, isSingleton?: boolean): ILifetime<null, E> {
+	static dummy( name: Key<any>, isSingleton?: boolean ): ILifetime<null, any> {
 		return {
-			clone() { return null as unknown as ILifetime<null, E> },
+			clone() { return null as unknown as ILifetime<null, any> },
 			provide() { return null },
 			name,
 			isSingleton,

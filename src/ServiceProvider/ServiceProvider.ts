@@ -11,16 +11,16 @@ export class ServiceProvider<E = any> implements IServiceProvider<E> {
 	readonly instances: Record<Key<any>, any> = {}
 	readonly proxy: E
 	
-	constructor(lifetimes: LifetimeCollection<E>) {
+	constructor( lifetimes: LifetimeCollection<E> ) {
 		this.lifetimes = lifetimes
-		this.proxy = proxyOf(this)
+		this.proxy = proxyOf( this )
 	}
 	
-	using(action: (provider: E) => any): void {
-		new ScopedServiceProvider<E>(this).using(action)
+	using( action: ( provider: E ) => any ): void {
+		new ScopedServiceProvider<E>( this ).using( action )
 	}
 	
-	provide<T>(selector: Selector<T, E>): T {
-		return new ScopedServiceProvider<E>(this).provide(selector)
+	provide<T>( selector: Selector<T, E> ): T {
+		return new ScopedServiceProvider<E>( this ).provide( selector )
 	}
 }

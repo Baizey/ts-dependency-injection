@@ -1,4 +1,5 @@
 import { DuplicateDependencyError } from '../Errors'
+import { CollectionDependencyError, DependencyError } from '../Errors/DependencyError'
 import { ILifetime } from '../Lifetime'
 import { IServiceProvider, ServiceProvider } from '../ServiceProvider'
 import { extractSelector } from '../utils'
@@ -14,26 +15,38 @@ export class ServiceCollection<E = {}> {
 		this.lifetimes = {}
 	}
 	
+	addMethod<F>( func: ( services: ServiceCollection<E> ) => ServiceCollection<F> ) {
+		return func( this )
+	}
+	
 	add<KT, F extends DependencyMap<E, KT>>( dependencies: F & DependencyMap<E, KT> ) {
+		const errors: DependencyError[] = []
 		Object.entries<DependencyInformation<unknown, any>>( dependencies ).forEach( ( [name, data] ) => {
-			if (name in this.lifetimes) throw new DuplicateDependencyError( name )
+			if (name in this.lifetimes) errors.push( new DuplicateDependencyError( name ) )
 			
-			const factory = 'factory' in data ?
-				data.factory :
-				// @ts-ignore don't touch-a ma spageht (the factory can be either p => new ... or (p, props) => new ... but ts dont know the second option
-				( p: any, props: any ) => new data.constructor( p, props )
+			const factory = 'factory' in data
+				? data.factory
+				// @ts-ignore the factory can be either p => new or (p, props) => new but ts don't know this
+				: ( p: any, props: any ) => new data.constructor( p, props )
 			
 			const { lifetime: Lifetime } = data
 			this.lifetimes[name] = new Lifetime( name, factory )
 		} )
 		
-		return this as unknown as ServiceCollection<{
-			[key in (keyof KT | keyof E)]:
-			key extends keyof E
-				? E[key] : key extends keyof KT
-					? KT[key]
-					: never
-		}>
+		switch (errors.length) {
+			case 0:
+				return this as unknown as ServiceCollection<{
+					[key in (keyof KT | keyof E)]:
+					key extends keyof E
+						? E[key] : key extends keyof KT
+							? KT[key]
+							: never
+				}>
+			case 1:
+				throw errors[0]
+			default:
+				throw new CollectionDependencyError( errors )
+		}
 	}
 	
 	get<T>( selector: Selector<T, E> ): ILifetime<T, E> | undefined {

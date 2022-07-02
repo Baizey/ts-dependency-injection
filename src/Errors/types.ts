@@ -4,4 +4,5 @@ export enum DependencyErrorType {
 	Existence,
 	Duplicate,
 	ShouldBeMocked,
+	Collection
 }

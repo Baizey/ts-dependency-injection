@@ -9,7 +9,7 @@ export interface IServiceProvider<E = any> {
 	readonly root: ServiceProvider<E>
 	readonly instances: Record<Key<any>, any>
 	
-	provide<T>(selector: Selector<T, E>): T
+	provide<T>( selector: Selector<T, E> ): T
 	
-	using(action: (provider: E) => any): void
+	using( action: ( provider: E ) => any ): void
 }
