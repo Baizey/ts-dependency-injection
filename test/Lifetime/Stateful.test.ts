@@ -42,15 +42,12 @@ describe( propertyOfStateful.create, () => {
 	test( 'Using circular factory in constructor gives circular error', () => {
 		const sut = dummy()
 			.add( {
-				circular: stateful( dummyClass( ( { circular } ) => {
-					circular.create()
-				} ) ),
+				circular: stateful( dummyClass( ( { circular } ) => circular.create() ) ),
 			} )
 			.build()
 			.circular
 		expect( () => sut.create() )
-			.toThrowError( new CircularDependencyError( 'circular@trapped#',
-				[ 'circular#1', 'circular@trapped#' ] ) )
+			.toThrowError( new CircularDependencyError( 'circular@instance', [ 'circular@instance' ] ) )
 	} )
 
 	test( 'Singleton dependency chain has scope restraints', () => {
@@ -64,7 +61,7 @@ describe( propertyOfStateful.create, () => {
 			.singleton
 
 		expect( () => sut.stateful.create() )
-			.toThrowError( new SingletonScopedDependencyError( 'singleton@stateful#1', 'scoped' ) )
+			.toThrowError( new SingletonScopedDependencyError( 'stateful@instance#1', 'scoped' ) )
 	} )
 
 	test( 'Non-singleton dependency chain has no scope restraints', () => {

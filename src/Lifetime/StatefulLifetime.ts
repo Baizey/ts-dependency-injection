@@ -12,14 +12,12 @@ import { ILifetime, Lifetime } from './ILifetime'
 export class StatefulLifetime<T, P, E> implements ILifetime<Stateful<P, T>, E> {
 	public readonly name: Key<E>
 	private readonly factory: DependencyFactory<T, P, E>
-	private readonly last: ILifetime<null, E>
 	private readonly next: ( { instances }: ScopedServiceProvider ) => number
 
 	constructor( name: Key<E>, factory: DependencyFactory<T, P, E> ) {
 		this.name = name
 		this.factory = factory
 
-		this.last = Lifetime.dummy( `${ name }@escaped` )
 		this.next = function ( { instances }: ScopedServiceProvider ): number {
 			instances[name] = instances[name] || 1
 			return instances[name]++
@@ -28,29 +26,28 @@ export class StatefulLifetime<T, P, E> implements ILifetime<Stateful<P, T>, E> {
 
 	public provide( context: ScopedServiceProvider<E> ): Stateful<P, T> {
 		const parentContext = context.parent as ScopedServiceProvider<E>
-		const { isSingleton, name: lastName } = context.lastSingleton ?? {}
-		const singleton = lastName
-			? `${ String( lastName ) }@`
-			: ''
+		const { isSingleton } = context.lastSingleton ?? {}
+		const name = this.name
+		const next = this.next
 
-		const next = this.next( context )
+		function createContext(): ScopedServiceProvider<E> {
+
+			if ( !parentContext.depth || !parentContext.isDone ) {
+				return parentContext
+					.enter( Lifetime.dummy( `${ name }@instance`, isSingleton ) )
+			}
+
+			const id = next( parentContext )
+
+			return new ScopedServiceProvider( context.root )
+				.enter( Lifetime.dummy( `${ name }@instance#${ id }`, isSingleton ) )
+		}
 
 		return {
 			create: ( props: P ) => {
-				const escapedContext = new ScopedServiceProvider( context.root )
-					.enter( parentContext.depth && this.last )
-					.enter( Lifetime.dummy( `${ singleton }${ this.name }#${ next }`, isSingleton ) )
-
-				const trappedContext = parentContext
-					.enter( Lifetime.dummy( `${ this.name }@trapped#` ) )
-
-				const usedContext = parentContext.isDone || !parentContext.depth
-					? escapedContext
-					: trappedContext
-
-				const result = this.factory( usedContext.proxy as any, props, usedContext as any )
+				const usedContext = createContext()
+				const result = this.factory( usedContext.proxy, props, usedContext )
 				usedContext.escape()
-
 				return result
 			},
 		}

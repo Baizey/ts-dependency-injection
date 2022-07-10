@@ -60,11 +60,11 @@ export class ScopedServiceProvider<E = any> implements IServiceProvider<E> {
 	}
 
 	provide<T>( selector: Selector<T, E> ): T {
-		const lifetime = this.getLifetime( selector )
+		const lifetime = this.getLifetime<T>( selector )
 		const context = new ScopedServiceProvider( this, lifetime )
 		const result = lifetime.provide( context )
-		this.escape()
-		return result as T
+		context.escape()
+		return result
 	}
 
 	enter( lifetime: ILifetime<any, E> | Falsy ) {
