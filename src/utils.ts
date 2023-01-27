@@ -1,4 +1,4 @@
-import { Key, Selector, SelectorOptions, ServiceCollection } from './ServiceCollection'
+import { DependencyInformation, Key, Selector, SelectorOptions, ServiceCollection } from './ServiceCollection'
 import { IServiceProvider } from './ServiceProvider'
 
 export type PropertyOf<E> = Required<{ [key in keyof E]: key & Key<E> }>
@@ -30,3 +30,6 @@ export function extractSelector<T, E>( options: Selector<T, E> ): Key<E> {
       throw new Error( `extractSelector could not match anything` )
   }
 }
+
+type DependencyFromInformation<X> = X extends DependencyInformation<infer T, any> ? T : never
+export type AsServices<X> = Required<{ [key in keyof X]: DependencyFromInformation<X[key]> }>
